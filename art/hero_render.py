@@ -77,16 +77,21 @@ def bone(a, b, r1, r2, m, depth=0):
     o = finish(m); o.rotation_mode = 'QUATERNION'; o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(d.normalized()); return o
 
 def build(j, near, far):
-    for side, m, dz in ((1, far, 7), (0, near, -7)):
+    # muscular build: heavy fists and forearms, broad chest tapering to a narrow waist, solid ball head
+    for side, m, dz in ((1, far, 8), (0, near, -8)):
         f, k, h, e = j['feet'][side], j['knees'][side], j['hands'][side], j['elbows'][side]
-        bone(j['hip'], k, 4.2, 3.4, m, dz); ball(k, 3.4, m, dz); bone(k, f, 3.4, 2.7, m, dz)
-        bone([f[0] - 2, f[1] - 2.4], [f[0] + 9, f[1] - 2.4], 3.0, 2.4, m, dz); ball([f[0] - 2, f[1] - 2.4], 3.0, m, dz); ball([f[0] + 9, f[1] - 2.4], 2.4, m, dz)
-        sp = [j['sh'][0] + (0 if side else 0), j['sh'][1]]
-        ball(sp, 4.6, m, dz * 1.25); bone(sp, e, 3.6, 2.9, m, dz * 1.25); ball(e, 2.9, m, dz * 1.25); bone(e, h, 2.9, 2.4, m, dz * 1.25); ball(h, 3.7, m, dz * 1.25)
-    t = bone(j['hip'], j['sh'], 5.2, 10.5, near); t.scale = (1, .62, 1)       # V-shaped torso
-    ball(j['hip'], 5.2, near); ball(j['neck'], 3.4, near)
-    bpy.ops.mesh.primitive_torus_add(major_radius=10.6 * U, minor_radius=2.9 * U, major_segments=48, minor_segments=16,
-                                     location=P(j['head'], -2), rotation=(pi / 2, 0, 0)); finish(near)
+        bone(j['hip'], k, 5.4, 4.0, m, dz * .7); ball(k, 4.0, m, dz * .7); bone(k, f, 4.2, 3.0, m, dz * .7)
+        bone([f[0] - 3, f[1] - 2.8], [f[0] + 10, f[1] - 2.8], 3.6, 2.8, m, dz * .7); ball([f[0] - 3, f[1] - 2.8], 3.6, m, dz * .7); ball([f[0] + 10, f[1] - 2.8], 2.8, m, dz * .7)
+        sp = [j['sh'][0], j['sh'][1] + 1]
+        ball(sp, 6.4, m, dz * 1.5); bone(sp, e, 4.8, 3.6, m, dz * 1.5); ball(e, 3.6, m, dz * 1.5)
+        bone(e, h, 3.4, 4.3, m, dz * 1.5); ball(h, 6.0, m, dz * 1.5)                      # forearm flares into a big fist
+    sh, hip = j['sh'], j['hip']
+    t = bone(hip, sh, 5.6, 12.5, near); t.scale = (1, .8, 1)
+    ch = [lerp(hip[0], sh[0], .72), lerp(hip[1], sh[1], .72)]
+    for dz in (-4.5, 4.5):
+        c = ball(ch, 7.6, near, dz); c.scale = (1, .8, .85)                                # chest
+    ball(hip, 5.8, near); ball(j['neck'], 4.2, near)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=12.2 * U, location=P(j['head'], -1), segments=40, ring_count=20); finish(near)
 
 sc = bpy.context.scene
 sc.render.engine = 'CYCLES'; sc.cycles.samples = 64; sc.cycles.use_denoising = False
@@ -105,11 +110,11 @@ for i, (name, ph, sw) in enumerate(FRAMES):
     bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete()
     for blk in (bpy.data.meshes, bpy.data.materials, bpy.data.lights, bpy.data.cameras):
         for d in list(blk): blk.remove(d)
-    near, far = mat('near', .92), mat('far', .58)
+    near, far = mat('near', .9), mat('far', .66)
     build(pose(name, ph, sw), near, far)
     cam = bpy.data.cameras.new('c'); cam.type = 'ORTHO'; cam.ortho_scale = 128 * U
     co = bpy.data.objects.new('c', cam); sc.collection.objects.link(co)
-    co.location = (0, -5, 52 * U); co.rotation_euler = (pi / 2, 0, 0); sc.camera = co
+    yaw = math.radians(20); co.location = (-math.sin(yaw) * 5, -math.cos(yaw) * 5, 52 * U); co.rotation_euler = (pi / 2, 0, -yaw); sc.camera = co
     for nm, energy, rot in (('key', 2.6, (math.radians(62), 0, math.radians(-48))),
                             ('rim', 6.0, (math.radians(-62), 0, math.radians(140))),
                             ('fill', .35, (math.radians(80), 0, math.radians(70)))):
