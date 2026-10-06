@@ -174,9 +174,11 @@ func _spawn(kind: String, pos: Vector2, patrol := false) -> Node2D:
 	return f
 
 func start(lv: String) -> void:
-	if lv != "line" and lv != "arena" and not ResourceLoader.exists("res://ch/%s.gd" % lv):
-		juice.toast_show("coming soon")
-		return
+	if lv != "line" and lv != "arena":   # a chapter that isn't there yet (or doesn't compile) must not crash the phone
+		var scr: Script = load("res://ch/%s.gd" % lv) if ResourceLoader.exists("res://ch/%s.gd" % lv) else null
+		if scr == null or not scr.can_instantiate():
+			juice.toast_show("coming soon")
+			return
 	if world:
 		world.queue_free()
 	world = Node2D.new()

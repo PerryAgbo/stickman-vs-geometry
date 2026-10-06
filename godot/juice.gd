@@ -198,7 +198,11 @@ func _watch_state(_delta: float) -> void:
 	if st == "play" and prev != "pause":
 		var i := level_index(m.level)
 		if i >= 0:
-			title(m.LEVELS[i][0], m.LEVELS[i][2], 2.8)
+			var first: bool = save.plays(m.level) == 0
+			var sub: String = m.LEVELS[i][2]
+			if first and m.touch and m.hero:
+				sub += "        left thumb moves   ·   ATK strikes   ·   JUMP twice to double jump"
+			title(m.LEVELS[i][0], sub, 4.4 if first else 2.8)
 		best_time = save.best_time(m.level)
 		new_best = false
 		grade = ""
@@ -220,6 +224,11 @@ func _watch_state(_delta: float) -> void:
 		else:
 			slowmo(0.6, 0.3)
 			haptic(200)
+			if m.hero:   # the hero shatters like the shapes he fights
+				var tint: Color = m.HEROES[m.hero_i]
+				m.fx.shards(_hero_pos() + Vector2(0, -50), 26, tint, 14.0, 520.0)
+				m.fx.ring(_hero_pos() + Vector2(0, -50), tint, 10.0, 160.0, 0.5, 5.0)
+				m.hero.visible = false
 	elif st == "pause":
 		haptic(10)
 	elif st == "menu":
