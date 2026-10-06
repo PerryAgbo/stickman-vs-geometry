@@ -19,7 +19,7 @@ func _buttons() -> Array:    # [action, centre, radius, label]
 		["dash", Vector2(s.x - 120, s.y - 340), 58.0, "DASH"], ["pause", Vector2(s.x - 56, 118), 32.0, "II"]]
 
 func _menu_rect(i: int) -> Rect2:
-	return Rect2(90, 300 + i * 96, 520, 80)
+	return Rect2(62 + (i % 4) * 292, 112 + (i / 4) * 80, 276, 68)
 
 func _input(ev: InputEvent) -> void:
 	if ev is InputEventScreenTouch:
@@ -31,7 +31,7 @@ func _input(ev: InputEvent) -> void:
 						m.sel = i
 						m.start(m.LEVELS[i][1])
 						return
-				if p.y > 596 and p.y < 660:
+				if p.y > 618 and p.y < 668:
 					var ci := int((p.x - 90) / 52.0)
 					if ci >= 0 and ci < m.HEROES.size(): m.hero_i = ci
 				return
@@ -80,26 +80,29 @@ func _text(s: String, pos: Vector2, sz: int, col := Color.WHITE, align := HORIZO
 func _draw() -> void:
 	var s := size
 	if m.state == "menu":
-		_text("STICKMAN", Vector2(90, 150), 78)
-		_text("vs", Vector2(92, 222), 30, m.HEROES[m.hero_i])
-		_text("GEOMETRY", Vector2(140, 228), 78)
+		_text("STICKMAN", Vector2(62, 72), 50)
+		_text("vs", Vector2(318, 72), 24, m.HEROES[m.hero_i])
+		_text("GEOMETRY", Vector2(356, 72), 50)
+		_text("CHAPTERS", Vector2(62, 100), 12, Color(1, 1, 1, 0.55))
 		for i in m.LEVELS.size():
 			var r := _menu_rect(i)
 			_panel(r, i == m.sel)
-			_text(m.LEVELS[i][0], r.position + Vector2(28, 36), 26, GOLD if i == m.sel else Color.WHITE)
-			_text(m.LEVELS[i][2], r.position + Vector2(28, 64), 15, Color(1, 1, 1, 0.7))
-		_text("HERO COLOUR", Vector2(90, 586), 12, Color(1, 1, 1, 0.6))
+			_text(m.LEVELS[i][0], r.position + Vector2(16, 30), 16, GOLD if i == m.sel else Color.WHITE)
+			_text(m.LEVELS[i][2], r.position + Vector2(16, 54), 12, Color(1, 1, 1, 0.65))
+		_text("HERO COLOUR", Vector2(90, 612), 12, Color(1, 1, 1, 0.6))
 		for i in m.HEROES.size():
-			var c := Vector2(112 + i * 52, 628)
+			var c := Vector2(112 + i * 52, 644)
 			draw_circle(c, 17.0 if i == m.hero_i else 12.0, m.HEROES[i])
 			if i == m.hero_i: draw_arc(c, 23.0, 0, TAU, 32, Color.WHITE, 2.0, true)
-		_text("tap a chapter to play" if m.touch else "up / down  choose      left / right  colour      ENTER  play", Vector2(90, 694), 15, Color(1, 1, 1, 0.6))
+		_text("tap a chapter to play" if m.touch else "arrows  choose      SHIFT  colour      ENTER  play", Vector2(90, 700), 15, Color(1, 1, 1, 0.6))
 		return
-	var h = m.hero
+	var h = m.hero if m.hero else m.ch
 	if h == null:
 		return
+	var fuel: float = h.fuel if m.hero else 1.0
 	# chapter chip, health, combo
-	var nm: String = "THE ARENA   wave %d / %d" % [m.wave + 1, m.WAVES.size()] if m.level == "arena" else "THE LINE"
+	var nm: String = "THE ARENA   wave %d / %d" % [m.wave + 1, m.WAVES.size()] if m.level == "arena" else m.LEVELS[m.sel][0]
+	if m.ch and m.ch.title != "": nm = m.ch.title
 	_panel(Rect2(16, 16, 26 + nm.length() * 9.5, 38))
 	_text(nm, Vector2(30, 42), 15)
 	var x0: float = s.x - 28.0 - h.max_hp * 31.0
@@ -107,9 +110,12 @@ func _draw() -> void:
 	_text("HP", Vector2(x0 - 40, 46), 13, Color(1, 1, 1, 0.7))
 	for i in h.max_hp:
 		draw_rect(Rect2(x0 + i * 31.0, 32, 26, 16), m.HEROES[m.hero_i] if i < h.hp else Color(1, 1, 1, 0.1))
-	if h.fuel < 0.99:
+	if fuel < 0.99:
 		draw_rect(Rect2(x0, 66, h.max_hp * 31.0 - 5.0, 5), Color(1, 1, 1, 0.12))
-		draw_rect(Rect2(x0, 66, (h.max_hp * 31.0 - 5.0) * maxf(0.0, h.fuel), 5), GOLD)
+		draw_rect(Rect2(x0, 66, (h.max_hp * 31.0 - 5.0) * maxf(0.0, fuel), 5), GOLD)
+	if m.ch and m.ch.info != "":
+		_panel(Rect2(16, 62, 24 + m.ch.info.length() * 7.6, 30))
+		_text(m.ch.info, Vector2(28, 83), 13, Color(1, 1, 1, 0.85))
 	if m.combo > 1:
 		_text("x%d" % m.combo, Vector2(s.x - 230, 190), 62, GOLD)
 		var w: String = ["", "", "NICE", "NICE", "SHARP", "SHARP", "FIERCE", "FIERCE", "FIERCE", "SAVAGE"][mini(m.combo, 9)]

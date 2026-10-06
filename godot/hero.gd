@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 signal hurt_taken
 signal throw_phi(target: Node2D)
+signal sound(name: String)
 
 const RUN := 390.0
 const JUMP := 820.0
@@ -41,9 +42,9 @@ func _ready() -> void:
 	var cs := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
 	cap.radius = 11.0
-	cap.height = 62.0
+	cap.height = 82.0
 	cs.shape = cap
-	cs.position = Vector2(0, -31)
+	cs.position = Vector2(0, -41)
 	add_child(cs)
 	skin = preload("res://skin.gd").new()
 	skin.tex = load("res://art/hero_parts.png")
@@ -56,7 +57,7 @@ func _nearest() -> Array:
 	for f in foes:
 		if not is_instance_valid(f) or f.dead:
 			continue
-		var d: float = (f.global_position - (global_position + Vector2(0, -40))).length() - f.r
+		var d: float = (f.global_position - (global_position + Vector2(0, -48))).length() - f.r
 		if d < bd:
 			bd = d
 			best = f
@@ -83,6 +84,7 @@ func _attack() -> void:
 	atk_t = atk_dur
 	combo_t = 0.75
 	atk_id += 1
+	sound.emit("slash")
 	if is_on_floor():
 		velocity.x += face * (340.0 if combo == 3 else 180.0)
 
@@ -91,8 +93,8 @@ func sword_hits(pos: Vector2, r: float, obj: Object) -> int:
 	if atk_t <= 0.0 or atk_t > atk_dur * 0.82 or obj.get_meta("hit_id", -1) == atk_id:
 		return 0
 	var dx := (pos.x - global_position.x) * face
-	var dy := pos.y - (global_position.y - 42.0)
-	if dx > -28.0 and dx < 104.0 + r and absf(dy) < 82.0 + r:
+	var dy := pos.y - (global_position.y - 52.0)
+	if dx > -28.0 and dx < 108.0 + r and absf(dy) < 90.0 + r:
 		obj.set_meta("hit_id", atk_id)
 		return 2 if combo == 3 else 1
 	return 0
@@ -101,7 +103,7 @@ func sword_hits(pos: Vector2, r: float, obj: Object) -> int:
 func dash_hits(pos: Vector2, r: float, obj: Object) -> int:
 	if dash_t <= 0.0 or obj.get_meta("dash_id", -1) == dash_id:
 		return 0
-	if pos.distance_to(global_position + Vector2(0, -40)) < r + 40.0:
+	if pos.distance_to(global_position + Vector2(0, -48)) < r + 44.0:
 		obj.set_meta("dash_id", dash_id)
 		dash_cd = 0.0
 		dj = false
@@ -135,6 +137,7 @@ func _physics_process(delta: float) -> void:
 		dash_dir = int(signf(ax)) if ax != 0.0 else face
 		face = dash_dir
 		inv = maxf(inv, 0.24)
+		sound.emit("dash")
 	if dash_t > 0.0:
 		dash_t -= delta
 		velocity = Vector2(dash_dir * 920.0, 0.0)
@@ -154,9 +157,11 @@ func _physics_process(delta: float) -> void:
 			velocity.y = -JUMP
 			coy = 0.0
 			buf = 0.0
+			sound.emit("jump")
 		elif Input.is_action_just_pressed("jump") and not on and not dj:
 			dj = true
 			velocity.y = -JUMP * 0.9
+			sound.emit("djump")
 		if on:
 			dj = false
 			fuel = minf(1.0, fuel + delta * 1.2)

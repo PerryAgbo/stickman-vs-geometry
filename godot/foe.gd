@@ -29,7 +29,7 @@ func setup(k: String, pos: Vector2, h: CharacterBody2D, atlas: Texture2D) -> voi
 	kind = k
 	hero = h
 	tex = atlas
-	r = {"tri": 26.0, "dia": 22.0, "riv": 36.0, "hex": 62.0}.get(k, 24.0)
+	r = {"tri": 26.0, "dia": 22.0, "riv": 46.0, "hex": 62.0}.get(k, 24.0)
 	hp = {"tri": 2, "dia": 1, "riv": 3, "hex": 18}.get(k, 2)
 	position = pos
 	home = pos
@@ -61,7 +61,7 @@ func _physics_process(delta: float) -> void:
 	t += delta
 	q += delta
 	flash -= delta
-	var to := hero.global_position + Vector2(0, -40) - global_position
+	var to := hero.global_position + Vector2(0, -48) - global_position
 	var dir := 1.0 if to.x >= 0.0 else -1.0
 	face = int(dir)
 	if patrol:
@@ -146,7 +146,7 @@ func _physics_process(delta: float) -> void:
 		d = hero.dash_hits(global_position, r, self)
 	if d > 0:
 		take(d, hero.face)
-	elif hero.dash_t <= 0.0 and hero.stun <= 0.0 and global_position.distance_to(hero.global_position + Vector2(0, -36)) < r + 20.0:
+	elif hero.dash_t <= 0.0 and hero.stun <= 0.0 and global_position.distance_to(hero.global_position + Vector2(0, -44)) < r + 16.0:
 		if patrol:
 			hero.stun = 0.26
 			hero.velocity.x *= 0.5

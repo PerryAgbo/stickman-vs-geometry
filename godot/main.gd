@@ -1,9 +1,20 @@
 extends Node2D
-## Game flow: menu, two chapters (The Line, The Arena), results. Builds each level in code.
+## Game flow: menu, chapters, results, sound. The two free-running platform chapters are built here;
+## every other chapter is a script in res://ch/ extending chapter.gd.
 
 const GOLD := Color("ffd23a")
 const HEROES := [Color("3aa0ff"), Color("ff6a0d"), Color("ff4a6a"), Color("5fe08a"), Color("b58cff"), Color("2ee6d6"), Color("f4f8ff"), Color("5a5478")]
-const LEVELS := [["THE LINE", "line", "Cut through them and outrun the polytope"], ["THE ARENA", "arena", "Survive four waves and the champion"]]
+const LEVELS := [["I  THE LINE", "line", "outrun the polytope"], ["II  THE GOLDEN SPIRAL", "spiral", "the golden ratio"], ["III  THE ANGLE", "angle", "inclined plane"],
+	["IV  THE VOID", "void", "free fall"], ["V  THE TESSERACT", "tess", "the pendulum"], ["VI  THE GOLDEN BLOCKS", "blocks", "scaling"],
+	["VII  THE PARABOLA", "parabola", "projectile motion"], ["VIII  THE CHARGE", "charge", "electric field"], ["IX  THE ORBIT", "orbit", "gravitation"],
+	["X  THE SINE WAVE", "sine", "waves"], ["XI  THE PRIMES", "primes", "number theory"], ["XII  THE MIRROR", "mirror", "optics"],
+	["XIII  THE COASTER", "coaster", "conservation of energy"], ["XIV  THE GALTON BOARD", "galton", "probability"], ["XV  THE MOLECULE", "molecule", "chemical bonding"],
+	["XVI  THE REACTION", "reaction", "conservation of mass"], ["XVII  THE CELL", "cell", "immunity"], ["XVIII  THE HELIX", "helix", "DNA base pairing"],
+	["XIX  THE ARENA", "arena", "momentum"], ["XX  THE SKY", "sky", "flight"], ["XXI  THE PENTAGON", "pentagon", "the boss"], ["XXII  THE DODECAHEDRON", "dodeca", "the ending"]]
+const BGS := {"line": "void", "spiral": "void", "angle": "void", "void": "void", "tess": "void", "blocks": "lab", "parabola": "lab", "charge": "lab", "orbit": "void",
+	"sine": "lab", "primes": "lab", "mirror": "lab", "coaster": "lab", "galton": "lab", "molecule": "lab", "reaction": "lab", "cell": "lab", "helix": "lab",
+	"arena": "arena", "sky": "sky", "pentagon": "gold", "dodeca": "gold"}
+const CALM := ["blocks", "parabola", "mirror", "reaction", "galton", "dodeca", "molecule"]
 const WAVES := [["tri", "tri", "riv"], ["riv", "riv", "dia", "dia"], ["dia", "dia", "dia", "riv", "riv", "tri"], ["hex", "riv", "riv", "dia", "dia"]]
 
 var state := "menu"
@@ -12,6 +23,7 @@ var sel := 0
 var hero_i := 0
 var world: Node2D
 var hero: CharacterBody2D
+var ch: Node2D
 var cam: Camera2D
 var fx: Node2D
 var hud: Control
@@ -34,9 +46,14 @@ var goal_x := 0.0
 var plats: Array = []
 var ground_y := 560.0
 var touch := false
+var mute := false
 var _shot := ""
 var _frames := 0
 var _bot := false
+var _rand := false
+var _sfx := {}
+var _pool: Array = []
+var _music: AudioStreamPlayer
 
 func _ready() -> void:
 	for a in [["move_left", [KEY_LEFT, KEY_A]], ["move_right", [KEY_RIGHT, KEY_D]], ["move_up", [KEY_UP, KEY_W]], ["move_down", [KEY_DOWN, KEY_S]],
@@ -49,6 +66,15 @@ func _ready() -> void:
 				InputMap.action_add_event(a[0], e)
 	foe_tex = load("res://art/foe_atlas.png")
 	touch = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios") or OS.get_environment("SVG_TOUCH") != ""
+	for n in ["jump", "djump", "dash", "slash", "hit", "hurt", "phi", "throw", "tick", "boom", "clear"]:
+		_sfx[n] = load("res://sfx/%s.wav" % n)
+	for i in 8:
+		var p := AudioStreamPlayer.new()
+		add_child(p)
+		_pool.append(p)
+	_music = AudioStreamPlayer.new()
+	_music.volume_db = -9.0
+	add_child(_music)
 	var bl := CanvasLayer.new()
 	bl.layer = -10
 	add_child(bl)
@@ -56,7 +82,6 @@ func _ready() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	bg.modulate = Color(0.3, 0.3, 0.3)
 	bl.add_child(bg)
 	cam = Camera2D.new()
 	add_child(cam)
@@ -68,12 +93,30 @@ func _ready() -> void:
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hl.add_child(hud)
 	_menu()
-	# test hooks: SVG_LEVEL starts a chapter, SVG_SHOT saves a screenshot after a few seconds and quits
+	# test hooks: SVG_LEVEL starts a chapter, SVG_SHOT saves a screenshot and quits, SVG_BOT / SVG_RAND drive input
 	_shot = OS.get_environment("SVG_SHOT")
 	_bot = OS.get_environment("SVG_BOT") != ""
+	_rand = OS.get_environment("SVG_RAND") != ""
 	var lv := OS.get_environment("SVG_LEVEL")
 	if lv != "":
 		start(lv)
+
+func snd(n: String, vol := 0.0) -> void:
+	if mute or not _sfx.has(n):
+		return
+	for p in _pool:
+		if not p.playing:
+			p.stream = _sfx[n]
+			p.volume_db = vol
+			p.play()
+			return
+
+func music(n: String) -> void:
+	var st: AudioStreamWAV = load("res://sfx/music_%s.wav" % n)
+	st.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	st.loop_end = st.data.size() / 2
+	_music.stream = st
+	_music.play()
 
 func _menu() -> void:
 	state = "menu"
@@ -81,10 +124,16 @@ func _menu() -> void:
 		world.queue_free()
 		world = null
 	hero = null
+	ch = null
 	foes.clear()
-	bg.texture = load("res://art/bg_void.jpg")
+	_set_bg("void")
 	cam.position = Vector2(640, 360)
 	Engine.time_scale = 1.0
+	music("calm")
+
+func _set_bg(n: String) -> void:
+	bg.texture = load("res://art/bg_%s.jpg" % n)
+	bg.modulate = {"void": Color(0.26, 0.26, 0.26), "lab": Color(0.5, 0.5, 0.5), "arena": Color(0.42, 0.42, 0.42), "sky": Color(0.5, 0.5, 0.5), "gold": Color(0.4, 0.4, 0.4)}[n]
 
 func _solid(x: float, y: float, w: float, h: float, one_way := false) -> void:
 	var b := StaticBody2D.new()
@@ -126,20 +175,30 @@ func start(lv: String) -> void:
 	add_child(world)
 	foes.clear()
 	plats.clear()
+	hero = null
+	ch = null
 	level = lv
 	combo = 0; best = 0; time = 0.0; won = false; result_t = 0.0; wave = 0
 	fx = preload("res://fx.gd").new()
 	fx.z_index = 20
 	world.add_child(fx)
+	_set_bg(BGS.get(lv, "void"))
+	music("calm" if lv in CALM else "action")
+	cam.position = Vector2(640, 360)
+	state = "play"
+	if lv != "line" and lv != "arena":
+		ch = load("res://ch/%s.gd" % lv).new()
+		world.add_child(ch)
+		ch.setup(self)
+		return
 	hero = preload("res://hero.gd").new()
 	hero.z_index = 10
 	world.add_child(hero)
 	hero.skin.tint = HEROES[hero_i]
-	hero.hurt_taken.connect(func(): combo = 0; shake = 14.0; fx.burst(hero.global_position + Vector2(0, -30), 14, HEROES[hero_i]))
-	hero.throw_phi.connect(func(target): fx.bolts.append({"p": hero.global_position + Vector2(hero.face * 22, -46), "t": target, "l": 0.0}))
+	hero.hurt_taken.connect(func(): combo = 0; shake = 14.0; snd("hurt"); fx.burst(hero.global_position + Vector2(0, -30), 14, HEROES[hero_i]))
+	hero.throw_phi.connect(func(target): snd("throw"); fx.bolts.append({"p": hero.global_position + Vector2(hero.face * 22, -46), "t": target, "l": 0.0}))
+	hero.sound.connect(snd)
 	if lv == "arena":
-		bg.texture = load("res://art/bg_arena.jpg")
-		bg.modulate = Color(0.42, 0.42, 0.42)
 		ground_y = 560.0
 		_solid(-400, 560, 2700, 400)
 		_solid(-60, -600, 80, 1200); _solid(1880, -600, 80, 1200)
@@ -148,8 +207,6 @@ func start(lv: String) -> void:
 		queue = WAVES[0].duplicate()
 		spawn_t = 1.6
 	else:
-		bg.texture = load("res://art/bg_void.jpg")
-		bg.modulate = Color(0.26, 0.26, 0.26)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 11
 		var x := -300.0
@@ -165,7 +222,7 @@ func start(lv: String) -> void:
 			ground_y = y
 			if rng.randf() < 0.75:
 				var k := "riv" if rng.randf() < 0.5 else "tri"
-				_spawn(k, Vector2(x + ln * 0.8, y - (36.0 if k == "riv" else 26.0)), true)
+				_spawn(k, Vector2(x + ln * 0.8, y - (46.0 if k == "riv" else 26.0)), true)
 			if gap > 150.0 and rng.randf() < 0.6:
 				_spawn("dia", Vector2(x - gap / 2.0, y - 95.0), true)
 			x += ln
@@ -182,12 +239,12 @@ func start(lv: String) -> void:
 		chaser.scale = Vector2(3.6, 3.6)
 		world.add_child(chaser)
 	cam.position = hero.position + Vector2(170, -140)
-	state = "play"
 
 func hitstop(sec: float) -> void:
 	Engine.time_scale = 0.05
 	await get_tree().create_timer(sec, true, false, true).timeout
-	Engine.time_scale = 1.0
+	if state == "play":
+		Engine.time_scale = 1.0
 
 func _on_foe_died(f: Node2D) -> void:
 	foes.erase(f)
@@ -195,6 +252,7 @@ func _on_foe_died(f: Node2D) -> void:
 	combo_t = 2.8
 	best = maxi(best, combo)
 	shake = maxf(shake, 28.0 if f.kind == "hex" else 8.0)
+	snd("boom" if f.kind == "hex" else "hit")
 	fx.burst(f.global_position, 90 if f.kind == "hex" else 24, GOLD, 700.0 if f.kind == "hex" else 420.0, 300.0)
 	if level == "line":
 		hero.rush = 2.2
@@ -206,12 +264,13 @@ func _on_foe_died(f: Node2D) -> void:
 
 func _on_foe_bumped(f: Node2D) -> void:
 	shake = maxf(shake, 20.0 if f.kind == "hex" else 9.0)
+	snd("hit", -4.0)
 	fx.burst(f.global_position, 14, Color.WHITE, 300.0)
 	if f.dead:
 		foes.erase(f)
 		combo = 0
 
-## Test pilot: walks at the nearest enemy and swings, jumps gaps. Used by automated runs only.
+## Test pilot for the two platform chapters. Automated runs only.
 func _pilot() -> void:
 	for a in ["move_left", "move_right", "jump", "attack"]: Input.action_release(a)
 	var near: Node2D = null
@@ -227,37 +286,43 @@ func _pilot() -> void:
 			if near.global_position.y < hero.global_position.y - 150.0 and hero.is_on_floor(): Input.action_press("jump")
 	else:
 		Input.action_press("move_right")
-		var ahead := false
-		for p in plats:
-			if absf(p.y - hero.position.y) < 90.0 and p.x - 50.0 > hero.position.x - 2000.0: pass
 		var space := get_world_2d().direct_space_state
 		var q := PhysicsRayQueryParameters2D.create(hero.global_position + Vector2(34, -20), hero.global_position + Vector2(34, 260))
-		ahead = not space.intersect_ray(q).is_empty()
+		var ahead := not space.intersect_ray(q).is_empty()
 		if hero.is_on_floor() and not ahead: Input.action_press("jump")
 		elif not hero.is_on_floor(): Input.action_press("jump")
 	if _frames % 5 == 0 and near and bd < 240.0: Input.action_press("attack")
 
 func _finish(win: bool) -> void:
-	if _bot:
-		print("RESULT ", level, " ", "win" if win else "lose", " time=", snappedf(time, 0.1), " hp=", hero.hp, " best_combo=", best, " wave=", wave + 1)
+	if state != "play":
+		return
+	if _bot or _rand:
+		print("RESULT ", level, " ", "win" if win else "lose", " time=", snappedf(time, 0.1), " best_combo=", best, " wave=", wave + 1)
 		get_tree().quit()
 	won = win
 	state = "result"
 	result_t = 0.0
 	Engine.time_scale = 1.0
+	snd("clear" if win else "hurt")
 
 func _process(delta: float) -> void:
 	_frames += 1
 	if _shot != "" and _frames == 240:
 		get_viewport().get_texture().get_image().save_png(_shot)
 		get_tree().quit()
+	if _rand and state == "play":   # random mashing, to flush out runtime errors
+		for a in ["move_left", "move_right", "move_up", "move_down", "jump", "attack", "dash"]:
+			if randf() < 0.08: Input.action_press(a)
+			elif randf() < 0.12: Input.action_release(a)
+		if _frames > 1500: _finish(false)
 	shake = maxf(0.0, shake - delta * 40.0)
 	hud.queue_redraw()
 	if state == "menu":
-		if Input.is_action_just_pressed("move_down"): sel = (sel + 1) % LEVELS.size()
-		if Input.is_action_just_pressed("move_up"): sel = (sel + LEVELS.size() - 1) % LEVELS.size()
-		if Input.is_action_just_pressed("move_right"): hero_i = (hero_i + 1) % HEROES.size()
-		if Input.is_action_just_pressed("move_left"): hero_i = (hero_i + HEROES.size() - 1) % HEROES.size()
+		if Input.is_action_just_pressed("move_down"): sel = mini(sel + 4, LEVELS.size() - 1)
+		if Input.is_action_just_pressed("move_up"): sel = maxi(sel - 4, 0)
+		if Input.is_action_just_pressed("move_right"): sel = mini(sel + 1, LEVELS.size() - 1)
+		if Input.is_action_just_pressed("move_left"): sel = maxi(sel - 1, 0)
+		if Input.is_action_just_pressed("dash"): hero_i = (hero_i + 1) % HEROES.size()
 		if Input.is_action_just_pressed("ok"): start(LEVELS[sel][1])
 		return
 	if state == "result":
@@ -266,23 +331,25 @@ func _process(delta: float) -> void:
 		return
 	if Input.is_action_just_pressed("pause"):
 		state = "pause" if state == "play" else "play"
-		get_tree().paused = false
 		Engine.time_scale = 0.0 if state == "pause" else 1.0
 	if state == "pause":
 		if Input.is_action_just_pressed("ok"): _menu()
 		return
-	if _bot: _pilot()
 	time += delta
 	combo_t -= delta
 	if combo_t <= 0.0: combo = 0
-	# thrown φ homes on its target
-	for b in fx.bolts:
+	cam.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake
+	if ch:
+		return
+	if _bot: _pilot()
+	for b in fx.bolts:   # thrown φ homes on its target
 		b["l"] += delta
 		if is_instance_valid(b["t"]) and not b["t"].dead:
 			var to: Vector2 = b["t"].global_position - b["p"]
 			b["p"] += to.normalized() * 1050.0 * delta
 			if to.length() < b["t"].r + 16.0:
 				b["t"].take(1, signf(to.x))
+				snd("hit", -3.0)
 				b["l"] = 9.0
 		else:
 			b["l"] = 9.0
@@ -295,13 +362,14 @@ func _process(delta: float) -> void:
 				var k: String = queue.pop_front()
 				var side := -1.0 if randf() < 0.5 else 1.0
 				var px := clampf(hero.position.x + side * randf_range(520, 740), 80, 1820)
-				_spawn(k, Vector2(px, 560.0 - 40.0 if k in ["tri", "riv", "hex"] else randf_range(170, 340)))
+				_spawn(k, Vector2(px, 560.0 - 46.0 if k in ["tri", "riv", "hex"] else randf_range(170, 340)))
 		elif foes.is_empty():
 			if wave < WAVES.size() - 1:
 				wave += 1
 				queue = WAVES[wave].duplicate()
 				spawn_t = 1.8
 				hero.hp = mini(hero.max_hp, hero.hp + 1)
+				snd("clear", -6.0)
 			else:
 				_finish(true)
 		cam.position = cam.position.lerp(Vector2(clampf(hero.position.x, 640, 1280), 300), delta * 5.0)
@@ -310,8 +378,7 @@ func _process(delta: float) -> void:
 		var v := 292.0 + minf(hero.position.x / 12000.0, 1.0) * 66.0
 		if gap > 820.0: v = 440.0
 		chaser_x += v * delta
-		chaser.position = Vector2(chaser_x, hero.position.y - 150.0).lerp(chaser.position, 0.9) if chaser.position != Vector2.ZERO else Vector2(chaser_x, 320)
-		chaser.position.x = chaser_x
+		chaser.position = Vector2(chaser_x, lerpf(chaser.position.y if chaser.position != Vector2.ZERO else 320.0, hero.position.y - 150.0, delta * 3.0))
 		chaser.rotation += delta * 2.0
 		shake = maxf(shake, clampf(1.0 - (gap - 150.0) / 400.0, 0.0, 1.0) * 5.0)
 		if randf() < delta * 40.0: fx.burst(Vector2(chaser_x + 120, hero.position.y - randf() * 60.0), 2, Color.WHITE, 420.0)
@@ -319,6 +386,7 @@ func _process(delta: float) -> void:
 		if hero.position.y > 1150.0:   # fell: back to the last platform, at the cost of a life
 			hero.hp -= 1
 			combo = 0
+			snd("hurt")
 			var cp: Vector2 = plats[0]
 			for p in plats:
 				if p.x <= hero.position.x: cp = p
@@ -327,5 +395,4 @@ func _process(delta: float) -> void:
 			chaser_x = minf(chaser_x, cp.x - 720.0)
 		if hero.position.x > goal_x: _finish(true)
 		cam.position = cam.position.lerp(hero.position + Vector2(170, -140), delta * 6.0)
-	cam.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake
 	if hero.hp <= 0: _finish(false)

@@ -27,17 +27,18 @@ def bone(a, b, r1, r2, m, d=0):
     bpy.ops.mesh.primitive_cone_add(radius1=r1 * U, radius2=r2 * U, depth=v.length, vertices=32, location=(A + B) / 2)
     o = fin(m); o.rotation_mode = 'QUATERNION'; o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(v.normalized()); return o
 
-def thigh(m): bone([0, 0], [0, 19.5], 5.6, 4.1, m); ball([0, 0], 5.6, m); ball([0, 19.5], 4.1, m)
-def shin(m):  bone([0, 0], [0, 19.5], 4.3, 3.0, m); ball([0, 0], 4.1, m); ball([0, 19.5], 3.0, m)
-def foot(m):  bone([-11, CY], [3, CY], 3.7, 2.9, m); ball([-11, CY], 3.7, m); ball([3, CY], 2.9, m)          # ankle at tile x = 60
-def uarm(m):  ball([0, 0], 6.5, m); bone([0, 0], [0, 15.5], 4.9, 3.7, m); ball([0, 15.5], 3.7, m)
-def farm(m):  ball([0, 0], 3.7, m); bone([0, 0], [0, 15.5], 3.5, 4.4, m); ball([0, 16.5], 6.2, m)            # forearm flares into a fist
+# Proportions: legs 24+24, arms 17+17, torso 28 from shoulder line to hip, so the figure stands upright at ~100 px.
+def thigh(m): bone([0, 0], [0, 24], 5.2, 3.9, m); ball([0, 0], 5.2, m); ball([0, 24], 3.9, m)
+def shin(m):  bone([0, 0], [0, 24], 4.0, 2.9, m); ball([0, 0], 3.9, m); ball([0, 24], 2.9, m)
+def foot(m):  bone([-11, CY], [3, CY], 3.5, 2.8, m); ball([-11, CY], 3.5, m); ball([3, CY], 2.8, m)          # ankle at tile x = 60
+def uarm(m):  ball([0, 0], 5.8, m); bone([0, 0], [0, 17], 4.4, 3.4, m); ball([0, 17], 3.4, m)
+def farm(m):  ball([0, 0], 3.4, m); bone([0, 0], [0, 17], 3.2, 3.9, m); ball([0, 18], 5.4, m)            # forearm flares into a fist
 def torso(m):
-    t = bone([0, 26], [0, 0], 5.8, 12.6, m); t.scale = (1, .8, 1)        # 26 px from shoulder line to hip; the game stretches it per pose
-    for d in (-4.5, 4.5):
-        c = ball([0, 7.3], 7.8, m, d); c.scale = (1, .8, .85)
-    ball([0, 26], 5.6, m); ball([0, -4], 4.3, m)
-def head(m):  ball([0, CY], 12.3, m, 0, 48)
+    t = bone([0, 28], [0, 0], 5.6, 11.0, m); t.scale = (1, .78, 1)
+    for d in (-4.2, 4.2):
+        c = ball([0, 8], 6.9, m, d); c.scale = (1, .78, .85)
+    ball([0, 28], 5.5, m); ball([0, -4], 4.0, m)
+def head(m):  ball([0, CY], 11.6, m, 0, 48)
 
 sc = bpy.context.scene
 sc.render.engine = 'CYCLES'; sc.cycles.samples = 96; sc.cycles.use_denoising = False
