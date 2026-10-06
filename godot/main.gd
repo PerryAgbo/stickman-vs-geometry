@@ -27,6 +27,7 @@ var ch: Node2D
 var cam: Camera2D
 var fx: Node2D
 var hud: Control
+var juice: Node        # game feel, haptics, save file, phone glue (juice.gd)
 var bg: TextureRect
 var foe_tex: Texture2D
 var foes: Array = []
@@ -92,6 +93,9 @@ func _ready() -> void:
 	hud.m = self
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hl.add_child(hud)
+	juice = preload("res://juice.gd").new()
+	juice.m = self
+	add_child(juice)
 	_menu()
 	# test hooks: SVG_LEVEL starts a chapter, SVG_SHOT saves a screenshot and quits, SVG_BOT / SVG_RAND drive input
 	_shot = OS.get_environment("SVG_SHOT")
@@ -108,6 +112,7 @@ func snd(n: String, vol := 0.0) -> void:
 		if not p.playing:
 			p.stream = _sfx[n]
 			p.volume_db = vol
+			p.pitch_scale = randf_range(0.94, 1.06)   # no two hits sound identical
 			p.play()
 			return
 
@@ -169,6 +174,9 @@ func _spawn(kind: String, pos: Vector2, patrol := false) -> Node2D:
 	return f
 
 func start(lv: String) -> void:
+	if lv != "line" and lv != "arena" and not ResourceLoader.exists("res://ch/%s.gd" % lv):
+		juice.toast_show("coming soon")
+		return
 	if world:
 		world.queue_free()
 	world = Node2D.new()
@@ -396,3 +404,7 @@ func _process(delta: float) -> void:
 		if hero.position.x > goal_x: _finish(true)
 		cam.position = cam.position.lerp(hero.position + Vector2(170, -140), delta * 6.0)
 	if hero.hp <= 0: _finish(false)
+
+## Phone vibration; chapters call this guarded with has_method.
+func haptic(ms: int) -> void:
+	juice.haptic(ms)
