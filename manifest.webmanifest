@@ -1,7 +1,7 @@
 {
   "name": "Stickman vs Geometry",
   "short_name": "Stickman",
-  "description": "A 16-chapter physics and maths adventure.",
+  "description": "A 20-chapter science and maths adventure.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",

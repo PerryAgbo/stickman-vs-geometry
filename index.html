@@ -111,10 +111,10 @@ const SCALE=[110,130.8,146.8,164.8,196,220,261.6,293.7,329.6,392];
 const music={t:0,i:0};
 function musicTick(dt){
   if(G.state!=='play'||G.paused)return;
-  const fast=[0,1,2,7,12,14].includes(G.stage);
+  const fast=[0,1,2,7,12,16,17,18].includes(G.stage);
   music.t-=dt;if(music.t>0)return;
   music.t=fast?.17:.34;const i=music.i++;
-  if(G.stage===15){if(i%4===0)tone(SCALE[5+(i/4)%5|0]*2,1.2,'sine',.05);return}
+  if(G.stage===19){if(i%4===0)tone(SCALE[5+(i/4)%5|0]*2,1.2,'sine',.05);return}
   if(i%4===0)tone(SCALE[[0,0,3,2][(i>>4)%4]]/2,.3,'triangle',.13);
   if(fast&&i%2===1)tone(SCALE[[5,7,8,7,9,8,7,5][(i>>1)%8]],.12,'sine',.035);
   if(!fast&&i%2===0)tone(SCALE[[5,8,7,9][(i>>1)%4]],.5,'sine',.04);
@@ -230,10 +230,10 @@ function text(s,x,y,size=20,col='#fff',align='center',weight=300){
 /* ---------- game state ---------- */
 const G={state:'title',stage:0,t:0,phi:0,deaths:0,time:0,fade:0,trans:null,shake:0,banner:0,paused:false,mute:false,flash:0};
 let ST=null;
-const SAVE=(()=>{try{const a=localStorage.getItem('svg_save4');if(a)return Object.assign({unlocked:1,best:{}},JSON.parse(a));
-  const o=JSON.parse(localStorage.getItem('svg_save3')||'{}'),b={};for(const k in o.best||{})if(+k<11)b[k]=o.best[k];
-  return{unlocked:Math.min(o.unlocked||1,12),best:b}}catch(e){return{unlocked:1,best:{}}}})();
-const persist=()=>{try{localStorage.setItem('svg_save4',JSON.stringify(SAVE))}catch(e){}};
+const SAVE=(()=>{try{const a=localStorage.getItem('svg_save5');if(a)return Object.assign({unlocked:1,best:{}},JSON.parse(a));
+  const o=JSON.parse(localStorage.getItem('svg_save4')||'{}'),b={};for(const k in o.best||{})if(+k<14)b[k]=o.best[k];
+  return{unlocked:Math.min(o.unlocked||1,15),best:b,tut:o.tut}}catch(e){return{unlocked:1,best:{}}}})();
+const persist=()=>{try{localStorage.setItem('svg_save5',JSON.stringify(SAVE))}catch(e){}};
 G.sel=0;G.bloom=true;G.run={t:0,phi:0,deaths:0};G.result=null;
 
 /* ---------- shared platformer physics ---------- */
@@ -497,7 +497,7 @@ function Stage4(){
   let hp=5,proj=null,cd=0,t=0,waves=[],shards=[],dying=0;
   const phase=()=>B.hp>16?1:B.hp>8?2:3;
   const hurt=(dir)=>{if(p.inv>0||dying)return;hp--;p.inv=1.3;p.vy=-430;p.vx=dir*380;p.kb=.25;p.ground=null;G.shake=14;sfx.hurt();burst(parts,p.x,p.y-30,14,{color:ORANGE})};
-  return{dbg:{p,B,get hp(){return hp},get waves(){return waves}},name:'XV · THE PENTAGON',hint:'X  throw φ  (it seeks the polytope when you are close)     SPACE  jump',parts,
+  return{dbg:{p,B,get hp(){return hp},get waves(){return waves}},name:'XIX · THE PENTAGON',hint:'X  throw φ  (it seeks the polytope when you are close)     SPACE  jump',parts,
     hud(){
       for(let i=0;i<5;i++){c.globalAlpha=i<hp?1:.2;drawPhi(W-40-i*34,40,22,.3,ORANGE)}c.globalAlpha=1;
       const bw=420;c.strokeStyle='#fff';c.lineWidth=1.5;c.strokeRect(W/2-bw/2,H-44,bw,8);c.fillStyle=GOLD;c.fillRect(W/2-bw/2,H-44,bw*Math.max(0,B.hp)/B.max,8);
@@ -1197,6 +1197,210 @@ function StageGalton(){
     }};
 }
 
+
+/* ================= THE MOLECULE — chemical bonding ================= */
+const EL={H:{c:'#ffffff',r:15,v:1,m:1},O:{c:'#ff5a4a',r:20,v:2,m:16},C:{c:'#9aa0a6',r:20,v:4,m:12},N:{c:'#6f9bff',r:20,v:3,m:14},Na:{c:'#b58cff',r:22,v:1,m:23},Cl:{c:'#6fe08a',r:22,v:1,m:35.5},Fe:{c:'#d98a4a',r:20,m:56},Al:{c:'#c8d0d8',r:20,m:27}};
+function drawAtom(x,y,el,sc=1,ghost=false){const e=EL[el],r=e.r*sc;c.save();if(ghost){c.globalAlpha*=.3;c.setLineDash([4,4]);c.strokeStyle=e.c;c.lineWidth=1.5;c.beginPath();c.arc(x,y,r,0,TAU);c.stroke()}
+  else{c.shadowColor=e.c;c.shadowBlur=12;c.fillStyle='#0b0b0b';c.strokeStyle=e.c;c.lineWidth=3*sc;c.beginPath();c.arc(x,y,r,0,TAU);c.fill();c.stroke()}
+  c.restore();if(!ghost||sc>=1)text(el,x,y+1,Math.max(9,(el.length>1?14:16)*sc),ghost?'#fff6':e.c,'center',600)}
+function StageMolecule(){
+  const GY=600,X0=60,X1=1220,parts=[];
+  const MOL=[{n:'H₂O',name:'water',geo:[['O',0,-8],['H',-36,22],['H',36,22]],b:[[0,1],[0,2]]},
+    {n:'CO₂',name:'carbon dioxide',geo:[['C',0,0],['O',-58,0],['O',58,0]],b:[[0,1,2],[0,2,2]]},
+    {n:'NH₃',name:'ammonia',geo:[['N',0,-12],['H',-40,20],['H',0,34],['H',40,20]],b:[[0,1],[0,2],[0,3]]},
+    {n:'CH₄',name:'methane',geo:[['C',0,0],['H',-38,-30],['H',38,-30],['H',-38,30],['H',38,30]],b:[[0,1],[0,2],[0,3],[0,4]]},
+    {n:'NaCl',name:'table salt',geo:[['Na',-30,0],['Cl',30,0]],b:[[0,1]]},
+    {n:'C₂H₆',name:'ethane',geo:[['C',-28,0],['C',28,0],['H',-62,-30],['H',-70,14],['H',-36,40],['H',62,-30],['H',70,14],['H',36,40]],b:[[0,1],[0,2],[0,3],[0,4],[1,5],[1,6],[1,7]]}];
+  for(const m of MOL){m.need={};m.mass=0;for(const g of m.geo){m.need[g[0]]=(m.need[g[0]]||0)+1;m.mass+=EL[g[0]].m}}
+  const ALL=['H','O','C','N','Na','Cl'],w={segs:[{x1:0,y1:GY,x2:W,y2:GY}],minX:X0+10,maxX:X1-10},p=newPlayer(W/2,GY);
+  let mi=0,have={},atoms=[],hp=5,t=0,doneT=0,R=rng(51);
+  const left=el=>(MOL[mi].need[el]||0)-(have[el]||0);
+  const spawn=()=>{const need=Object.keys(MOL[mi].need).filter(e=>left(e)>0),on=atoms.filter(a=>left(a.el)>0).length;
+    const el=need.length&&on<2?need[Math.floor(R()*need.length)]:ALL[Math.floor(R()*ALL.length)],a=R()*TAU,sp=90+R()*70;
+    let x;do{x=X0+40+R()*(X1-X0-80)}while(Math.abs(x-p.x)<170);
+    atoms.push({el,x,y:400+R()*40,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.8,born:0})};
+  const begin=()=>{have={};atoms=[];hp=5;doneT=0;for(let i=0;i<7;i++)spawn()};begin();
+  return{dbg:{p,MOL,left,get atoms(){return atoms},get mi(){return mi},get hp(){return hp}},name:'XV · THE MOLECULE',hint:'← →  move     SPACE  jump     —     catch only the atoms the molecule needs',parts,
+    hud(){for(let i=0;i<5;i++){c.globalAlpha=i<hp?1:.2;drawPhi(W-40-i*34,40,22,.3,ORANGE)}c.globalAlpha=1},
+    lab(){const m=MOL[mi];return['molecule '+(mi+1)+' / '+MOL.length+'     '+m.n+'  ('+m.name+')','bonds each atom forms:  H 1 · O 2 · N 3 · C 4','molar mass  M('+m.n+') = '+m.mass+' g/mol']},
+    respawn(){begin();Object.assign(p,newPlayer(W/2,GY))},
+    update(dt){
+      t+=dt;platStep(p,w,dt);
+      if(doneT){doneT+=dt;updParts(parts,dt);if(doneT>1.6){if(mi===MOL.length-1){this.done=true;return}mi++;begin()}return}
+      for(let i=atoms.length-1;i>=0;i--){const a=atoms[i],e=EL[a.el];a.born+=dt;a.x+=a.vx*dt;a.y+=a.vy*dt;
+        if(a.x<X0+e.r){a.x=X0+e.r;a.vx=Math.abs(a.vx)}if(a.x>X1-e.r){a.x=X1-e.r;a.vx=-Math.abs(a.vx)}
+        if(a.y<385){a.y=385;a.vy=Math.abs(a.vy)}if(a.y>GY-e.r-2){a.y=GY-e.r-2;a.vy=-Math.abs(a.vy)}
+        if(a.born>.8&&Math.hypot(a.x-p.x,a.y-(p.y-36))<e.r+26){
+          atoms.splice(i,1);
+          if(left(a.el)>0){have[a.el]=(have[a.el]||0)+1;G.phi++;sfx.phi();burst(parts,a.x,a.y,10,{color:e.c,g:0})}
+          else if(p.inv<=0){hp--;p.inv=1.1;G.shake=10;sfx.hurt();burst(parts,a.x,a.y,14,{color:'#ff5a3a'})}
+          spawn()}}
+      if(hp<=0){this.dead=true;return}
+      if(Object.keys(MOL[mi].need).every(e=>left(e)<=0)){doneT=.001;sfx.clear();G.flash=.3;burst(parts,W/2,190,40,{color:GOLD,speed:400,g:0,life:1})}
+      updParts(parts,dt);
+    },
+    draw(){
+      const m=MOL[mi];drawStars(0,0,.25);
+      c.strokeStyle='#fff';c.lineWidth=2;c.beginPath();c.moveTo(X0,GY);c.lineTo(X1,GY);c.stroke();c.lineWidth=1;c.globalAlpha=.3;c.strokeRect(X0,370,X1-X0,GY-370);c.globalAlpha=1;
+      // target card
+      c.fillStyle='rgba(0,0,0,.45)';c.fillRect(W/2-330,92,660,200);c.strokeStyle='#fff5';c.lineWidth=1;c.strokeRect(W/2-330,92,660,200);
+      text('BUILD',W/2-290,122,12,GOLD,'left',500);text(m.n,W/2-290,166,46,'#fff','left',200);text(m.name,W/2-290,206,15,'#fffb','left');
+      let sx=W/2-290;for(const el of Object.keys(m.need)){for(let i=0;i<m.need[el];i++){drawAtom(sx+12,256,el,.6,i>=(have[el]||0));sx+=30}sx+=14}
+      const cx=W/2+170,cy=190,cnt={};const got=m.geo.map(g=>{cnt[g[0]]=(cnt[g[0]]||0)+1;return cnt[g[0]]<=(have[g[0]]||0)});
+      for(const b of m.b){const A=m.geo[b[0]],B=m.geo[b[1]],on=got[b[0]]&&got[b[1]];c.strokeStyle=on?'#fff':'#fff3';c.lineWidth=on?3:1.5;
+        if(b[2]===2){const nx=-(B[2]-A[2]),ny=B[1]-A[1],l=Math.hypot(nx,ny)||1;for(const s of[-4,4]){c.beginPath();c.moveTo(cx+A[1]+nx/l*s,cy+A[2]+ny/l*s);c.lineTo(cx+B[1]+nx/l*s,cy+B[2]+ny/l*s);c.stroke()}}
+        else{c.beginPath();c.moveTo(cx+A[1],cy+A[2]);c.lineTo(cx+B[1],cy+B[2]);c.stroke()}}
+      m.geo.forEach((g,i)=>drawAtom(cx+g[1],cy+g[2],g[0],1,!got[i]));
+      for(const a of atoms){c.globalAlpha=clamp(a.born/.8,.25,1);drawAtom(a.x,a.y,a.el);c.globalAlpha=1}
+      drawParts(parts);drawPlayer(p);
+      if(doneT)text(m.n+'  ✓',W/2,340,30,GOLD);
+    }};
+}
+
+/* ================= THE REACTION — balancing equations ================= */
+function StageReaction(){
+  const parts=[];
+  const EQ=[{L:[['H₂',{H:2}],['O₂',{O:2}]],R:[['H₂O',{H:2,O:1}]],tip:'hydrogen burns in oxygen to make water'},
+    {L:[['N₂',{N:2}],['H₂',{H:2}]],R:[['NH₃',{N:1,H:3}]],tip:'the Haber process makes ammonia for fertiliser'},
+    {L:[['CH₄',{C:1,H:4}],['O₂',{O:2}]],R:[['CO₂',{C:1,O:2}],['H₂O',{H:2,O:1}]],tip:'burning methane, the main part of natural gas'},
+    {L:[['Fe',{Fe:1}],['O₂',{O:2}]],R:[['Fe₂O₃',{Fe:2,O:3}]],tip:'iron rusting'},
+    {L:[['C₃H₈',{C:3,H:8}],['O₂',{O:2}]],R:[['CO₂',{C:1,O:2}],['H₂O',{H:2,O:1}]],tip:'burning propane'},
+    {L:[['Al',{Al:1}],['HCl',{H:1,Cl:1}]],R:[['AlCl₃',{Al:1,Cl:3}],['H₂',{H:2}]],tip:'a metal dissolving in acid releases hydrogen gas'}];
+  let ei=0,co=[],sel=0,solved=0,t=0;
+  const terms=()=>EQ[ei].L.concat(EQ[ei].R),nL=()=>EQ[ei].L.length;
+  const tally=()=>{const T={};terms().forEach((q,i)=>{for(const el in q[1]){T[el]=T[el]||[0,0];T[el][i<nL()?0:1]+=q[1][el]*co[i]}});return T};
+  const begin=()=>{co=terms().map(()=>1);sel=0;solved=0};begin();
+  return{dbg:{EQ,tally,get ei(){return ei},get co(){return co},set sel(v){sel=v}},name:'XVI · THE REACTION',hint:'← →  choose a molecule     ↑ ↓  change how many     —     balance the atoms on both sides',parts,
+    lab(){const T=tally();let a=0,b=0;for(const el in T){a+=T[el][0];b+=T[el][1]}return['equation '+(ei+1)+' / '+EQ.length,'atoms in  = '+a,'atoms out = '+b,'matter is never created or destroyed']},
+    update(dt){
+      t+=dt;updParts(parts,dt);
+      if(solved){solved+=dt;if(solved>1.5){if(ei===EQ.length-1){this.done=true;return}ei++;begin()}return}
+      const n=co.length;
+      if(tapped('right')){sel=(sel+1)%n;tone(660,.05,'sine',.07)}if(tapped('left')){sel=(sel+n-1)%n;tone(660,.05,'sine',.07)}
+      if(hit.ArrowUp||hit.KeyW){co[sel]=Math.min(9,co[sel]+1);tone(520+co[sel]*40,.06,'triangle',.08)}
+      if(tapped('down')){co[sel]=Math.max(1,co[sel]-1);tone(520+co[sel]*40,.06,'triangle',.08)}
+      const T=tally();if(Object.values(T).every(v=>v[0]===v[1])){solved=.001;G.phi+=2;sfx.clear();G.flash=.3;burst(parts,W/2,300,50,{color:GOLD,speed:450,g:0,life:1})}
+    },
+    draw(){
+      const E=EQ[ei],TS=terms(),n=TS.length,T=tally();drawStars(0,0,.25);
+      text(E.tip,W/2,42,17,'#fffa');
+      EQ.forEach((q,i)=>{c.globalAlpha=i<ei?1:i===ei?.9:.3;c.fillStyle=i<ei?GOLD:'#fff';c.beginPath();c.arc(W/2-50+i*20,70,i===ei?5:3.5,0,TAU);c.fill()});c.globalAlpha=1;
+      const sp=Math.min(250,1040/n),tx=i=>W/2+(i-(n-1)/2)*sp,EY=330;
+      TS.forEach((q,i)=>{const x=tx(i),on=i===sel&&!solved;
+        if(i>0)text(i===nL()?'→':'+',x-sp/2,EY,40,i===nL()?GOLD:'#fff','center',200);
+        c.save();if(on){c.shadowColor=GOLD;c.shadowBlur=18}text(''+co[i],x-52,EY,60,on?GOLD:solved?GOLD:'#fff','center',300);c.restore();
+        text(q[0],x-24,EY+4,38,'#fff','left',300);
+        if(on){text('▲',x-52,EY-52,14,GOLD);text('▼',x-52,EY+52,14,GOLD)}
+        // the molecules themselves
+        const els=[];for(const el in q[1])for(let k=0;k<q[1][el];k++)els.push(el);
+        for(let k=0;k<co[i];k++){const bx=x-70+(k%3)*56,by=EY-96-Math.floor(k/3)*34;els.slice(0,6).forEach((el,j)=>{const e=EL[el];c.fillStyle=e.c;c.globalAlpha=.9;c.beginPath();c.arc(bx+(j%4)*11,by+Math.floor(j/4)*11,5.5,0,TAU);c.fill()});c.globalAlpha=1}
+      });
+      // tally table
+      const ks=Object.keys(T),ty=460;text('ATOMS IN',W/2-150,ty,11,'#fff9','right',500);text('ATOMS OUT',W/2+150,ty,11,'#fff9','left',500);
+      ks.forEach((el,i)=>{const y=ty+34+i*36,v=T[el],ok=v[0]===v[1],e=EL[el];
+        c.fillStyle=e.c;c.beginPath();c.arc(W/2-16,y,9,0,TAU);c.fill();text(el,W/2+14,y+1,18,'#fff','left',500);
+        c.fillStyle=ok?GOLD:'#ff8a70';c.fillRect(W/2-60-v[0]*14,y-7,v[0]*14,14);c.fillRect(W/2+60,y-7,v[1]*14,14);
+        text(''+v[0],W/2-72-v[0]*14,y+1,16,'#fff','right',500);text(''+v[1],W/2+72+v[1]*14,y+1,16,'#fff','left',500);
+        text(ok?'✓':'≠',W/2+420,y+1,20,ok?GOLD:'#ff8a70')});
+      drawParts(parts);
+      drawStick(tx(sel)-52,EY+150,{pose:solved?'jump':'throw',ph:t*3,s:.8});
+      if(solved)text('balanced  ✓',W/2,200,26,GOLD);
+    }};
+}
+
+/* ================= THE CELL — immunity ================= */
+function StageCell(){
+  const TOP=120,BOT=610,GOAL=30,parts=[],ents=[],shots=[],rbc=[];
+  const p={x:260,y:360,inv:0,pulse:0};let hp=4,inf=0,eaten=0,t=0,spawn=1,cd=0,R=rng(61);
+  for(let i=0;i<14;i++)rbc.push({x:R()*W,y:TOP+30+R()*(BOT-TOP-60),s:.6+R()*.6,a:R()*TAU});
+  return{dbg:{p,ents,GOAL,TOP,BOT,get eaten(){return eaten},get hp(){return hp},get inf(){return inf}},name:'XVII · THE CELL',hint:'← → ↑ ↓  swim     X  fire antibodies     —     engulf bacteria,  tag viruses before you touch them',parts,
+    hud(){for(let i=0;i<4;i++){c.globalAlpha=i<hp?1:.2;drawPhi(W-40-i*34,40,22,.3,ORANGE)}c.globalAlpha=1;
+      text('engulfed  '+eaten+' / '+GOAL,W/2-140,70,16,'#fff');text('infection',W/2+70,70,13,'#ff8a70');c.strokeStyle='#fff';c.lineWidth=1;c.strokeRect(W/2+110,64,160,12);c.fillStyle='#ff5a3a';c.fillRect(W/2+110,64,160*inf/10,12)},
+    lab(){return['you are a white blood cell (phagocyte)','bacteria: engulf on contact','virus: antibody tag first, then engulf','escaped pathogens raise the infection']},
+    update(dt){
+      t+=dt;p.inv-=dt;p.pulse=Math.max(0,p.pulse-dt*3);cd-=dt;
+      const ax=(held('right')?1:0)-(held('left')?1:0),ay=(held('down')?1:0)-(held('up')?1:0);
+      p.x=clamp(p.x+ax*320*dt,60,W-200);p.y=clamp(p.y+ay*320*dt,TOP+44,BOT-44);
+      if((held('fire')||keys.Space)&&cd<=0){cd=.28;shots.push({x:p.x+40,y:p.y});sfx.throw()}
+      const k=clamp(eaten/GOAL,0,1);spawn-=dt;
+      if(spawn<=0){spawn=lerp(1.05,.55,k)*(.7+R()*.6);const v=R()<.38;ents.push({v,x:W+50,y:TOP+50+R()*(BOT-TOP-100),vx:-(120+R()*70+k*50),ph:R()*TAU,tag:false,r:v?22:20})}
+      for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.x+=760*dt;if(s.x>W+20){shots.splice(i,1);continue}
+        for(const e of ents)if(e.v&&!e.tag&&Math.hypot(e.x-s.x,e.y-s.y)<e.r+12){e.tag=true;e.vx*=.6;shots.splice(i,1);sfx.bossHit();burst(parts,e.x,e.y,8,{color:GOLD,g:0});break}}
+      for(let i=ents.length-1;i>=0;i--){const e=ents[i];e.ph+=dt*2;e.x+=e.vx*dt;e.y=clamp(e.y+Math.sin(e.ph)*40*dt,TOP+26,BOT-26);
+        if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+38){
+          if(!e.v||e.tag){eaten++;G.phi++;p.pulse=1;sfx.phi();burst(parts,e.x,e.y,10,{color:e.v?'#b58cff':'#6fe08a',g:0});ents.splice(i,1);continue}
+          else if(p.inv<=0){hp--;p.inv=1.2;G.shake=12;sfx.hurt();burst(parts,e.x,e.y,14,{color:'#ff5a3a'});ents.splice(i,1);continue}}
+        if(e.x<-40){ents.splice(i,1);inf+=e.v?2:1;G.shake=5;tone(140,.2,'sawtooth',.08,90)}}
+      for(const q of rbc){q.x-=90*q.s*dt;q.a+=dt*.6;if(q.x<-60){q.x=W+60;q.y=TOP+30+R()*(BOT-TOP-60)}}
+      if(hp<=0||inf>=10){this.dead=true;if(inf>=10)sfx.hurt();return}
+      if(eaten>=GOAL)this.done=true;
+      updParts(parts,dt);
+    },
+    draw(){
+      const g=c.createLinearGradient(0,TOP,0,BOT);g.addColorStop(0,'#2a0a0c');g.addColorStop(.5,'#12060a');g.addColorStop(1,'#2a0a0c');c.fillStyle=g;c.fillRect(0,TOP-20,W,BOT-TOP+40);
+      for(const yy of[TOP,BOT]){c.strokeStyle='#ff8a70';c.lineWidth=3;c.beginPath();for(let x=0;x<=W;x+=20){const y=yy+Math.sin(x*.02+t*1.5)*8*(yy===TOP?1:-1);x?c.lineTo(x,y):c.moveTo(x,y)}c.stroke()}
+      for(const q of rbc){c.save();c.translate(q.x,q.y);c.rotate(q.a);c.globalAlpha=.3;c.strokeStyle='#ff5a4a';c.lineWidth=3;c.beginPath();c.ellipse(0,0,30*q.s,14*q.s,0,0,TAU);c.stroke();c.beginPath();c.ellipse(0,0,12*q.s,5*q.s,0,0,TAU);c.stroke();c.restore()}
+      for(const e of ents){c.save();c.translate(e.x,e.y);
+        if(e.v){const col=e.tag?GOLD:'#b58cff';c.rotate(e.ph*.5);c.shadowColor=col;c.shadowBlur=12;c.strokeStyle=col;c.lineWidth=2;c.beginPath();
+          for(let k=0;k<10;k++){const a=k*TAU/10;c.moveTo(Math.cos(a)*14,Math.sin(a)*14);c.lineTo(Math.cos(a)*24,Math.sin(a)*24)}c.stroke();
+          c.fillStyle='#0b0b0b';c.beginPath();c.arc(0,0,14,0,TAU);c.fill();c.stroke();if(e.tag){c.shadowBlur=0;text('Y',0,1,16,GOLD,'center',600)}}
+        else{c.rotate(Math.sin(e.ph)*.5);c.shadowColor='#6fe08a';c.shadowBlur=10;c.fillStyle='#0b0b0b';c.strokeStyle='#6fe08a';c.lineWidth=2.5;c.beginPath();c.roundRect(-24,-10,48,20,10);c.fill();c.stroke();
+          c.lineWidth=1.2;c.beginPath();c.moveTo(24,0);c.quadraticCurveTo(34,-8,42,2);c.stroke()}
+        c.restore()}
+      c.strokeStyle=GOLD;c.lineWidth=2.5;c.lineCap='round';for(const s of shots){c.beginPath();c.moveTo(s.x-12,s.y);c.lineTo(s.x,s.y);c.moveTo(s.x,s.y);c.lineTo(s.x+9,s.y-8);c.moveTo(s.x,s.y);c.lineTo(s.x+9,s.y+8);c.stroke()}
+      drawParts(parts);
+      if(!(p.inv>0&&Math.floor(p.inv*14)%2)){const r=40+p.pulse*10;c.save();c.shadowColor='#bfe9ff';c.shadowBlur=18;c.fillStyle='rgba(190,230,255,.10)';c.strokeStyle='#dff3ff';c.lineWidth=2.5;c.beginPath();
+        for(let k=0;k<=24;k++){const a=k*TAU/24,rr=r+Math.sin(a*3+t*3)*4;k?c.lineTo(p.x+Math.cos(a)*rr,p.y+Math.sin(a)*rr):c.moveTo(p.x+Math.cos(a)*rr,p.y+Math.sin(a)*rr)}c.closePath();c.fill();c.stroke();c.restore();
+        drawStick(p.x,p.y+26,{pose:'surf',s:.62,ph:t*3})}
+    }};
+}
+
+/* ================= THE HELIX — DNA base pairing ================= */
+function StageHelix(){
+  const LY=[270,360,450,540],PX=300,GAP=330,parts=[],COL={A:'#6fe08a',T:'#ff5a4a',U:'#ff9a3a',G:GOLD,C:'#6fd0ff'};
+  const R=rng(71),ND=22,NR=18,cols=[];for(let i=0;i<ND+NR;i++)cols.push({b:'ATGC'[Math.floor(R()*4)],rna:i>=ND,x:1500+i*GAP+(i>=ND?500:0),done:false});
+  let lane=0,ly=LY[0],hp=5,t=0,ok=0,inv=0,msg=0;
+  const lanes=rna=>rna?['A','U','G','C']:['A','T','G','C'],pair=(b,rna)=>({A:rna?'U':'T',T:'A',G:'C',C:'G'})[b];
+  return{dbg:{cols,lanes,pair,PX,get lane(){return lane},get hp(){return hp}},name:'XVIII · THE HELIX',hint:'↑ ↓  change lane     —     stand in the lane that pairs with the next base',parts,
+    hud(){for(let i=0;i<5;i++){c.globalAlpha=i<hp?1:.2;drawPhi(W-40-i*34,40,22,.3,ORANGE)}c.globalAlpha=1},
+    lab(){const nx=cols.find(q=>!q.done),seq=cols.filter(q=>q.done&&q.got).slice(-10).map(q=>q.b+'–'+q.got).join(' ');return[nx&&nx.rna?'TRANSCRIPTION  DNA → RNA:  A–U  T–A  G–C  C–G':'REPLICATION  DNA → DNA:  A–T  T–A  G–C  C–G','A–T (A–U) share 2 hydrogen bonds,  G–C share 3','paired '+ok+' / '+cols.length,seq||'…']},
+    respawn(){for(const q of cols){q.done=false;q.got=null}const sh=1500-cols[0].x;for(const q of cols)q.x+=sh;hp=5;ok=0;lane=0},
+    update(dt){
+      t+=dt;inv-=dt;msg-=dt;
+      if(hit.ArrowUp||hit.KeyW){lane=Math.max(0,lane-1);tone(700,.04,'sine',.06)}if(tapped('down')){lane=Math.min(3,lane+1);tone(600,.04,'sine',.06)}
+      ly=lerp(ly,LY[lane],dt*22);
+      const v=350+clamp(ok/cols.length,0,1)*150;
+      for(const q of cols){const ox=q.x;q.x-=v*dt;
+        if(!q.done&&ox>PX&&q.x<=PX){q.done=true;const mine=lanes(q.rna)[lane];
+          if(mine===pair(q.b,q.rna)){q.got=mine;ok++;G.phi++;tone(440*Math.pow(2,'ATGC'.indexOf(q.b)/6),.12,'sine',.1);burst(parts,PX,ly,6,{color:COL[mine],g:0})}
+          else{q.got=null;q.bad=mine;hp--;inv=.6;G.shake=10;sfx.hurt();burst(parts,PX,ly,14,{color:'#ff5a3a'})}}}
+      const first=cols.find(q=>q.rna);if(first&&first.x<W+200&&!first.said){first.said=true;msg=3.2;sfx.clear()}
+      if(hp<=0){this.dead=true;return}
+      if(cols[cols.length-1].x<PX-300)this.done=true;
+      updParts(parts,dt);
+    },
+    draw(){
+      drawStars(t*60,0,.25);const nx=cols.find(q=>!q.done),rna=nx?nx.rna:true,LN=lanes(rna);
+      // decorative double helix
+      for(const s of[0,Math.PI]){c.strokeStyle=s?'#6fd0ff':GOLD;c.globalAlpha=.5;c.lineWidth=2;c.beginPath();for(let x=0;x<=W;x+=16){const y=130+Math.sin(x*.02+t*2+s)*22;x?c.lineTo(x,y):c.moveTo(x,y)}c.stroke()}
+      c.globalAlpha=.25;c.strokeStyle='#fff';c.lineWidth=1;c.beginPath();for(let x=8;x<=W;x+=32){const a=x*.02+t*2;c.moveTo(x,130+Math.sin(a)*22);c.lineTo(x,130-Math.sin(a)*22)}c.stroke();c.globalAlpha=1;
+      c.strokeStyle='#fff';c.lineWidth=2;c.beginPath();c.moveTo(0,200);c.lineTo(W,200);c.stroke();text('template strand',16,186,11,'#fff9','left',500);
+      LN.forEach((b,i)=>{c.strokeStyle=COL[b];c.globalAlpha=.22;c.lineWidth=1;c.setLineDash([6,10]);c.beginPath();c.moveTo(0,LY[i]);c.lineTo(W,LY[i]);c.stroke();c.setLineDash([]);c.globalAlpha=1;
+        c.fillStyle='#0b0b0b';c.strokeStyle=COL[b];c.lineWidth=i===lane?3:1.5;c.beginPath();c.arc(70,LY[i],22,0,TAU);c.fill();c.stroke();text(b,70,LY[i]+1,22,COL[b],'center',600)});
+      for(const q of cols){if(q.x<-60||q.x>W+60)continue;const cb=COL[q.b];
+        c.fillStyle='#0b0b0b';c.strokeStyle=cb;c.lineWidth=2.5;c.beginPath();c.roundRect(q.x-24,200,48,44,6);c.fill();c.stroke();text(q.b,q.x,223,26,cb,'center',600);
+        if(q.done){if(q.got){const i=lanes(q.rna).indexOf(q.got);c.strokeStyle=COL[q.got];c.lineWidth=3;c.beginPath();c.moveTo(q.x,244);c.lineTo(q.x,LY[i]-20);c.stroke();
+            c.fillStyle='#0b0b0b';c.beginPath();c.arc(q.x,LY[i],20,0,TAU);c.fill();c.stroke();text(q.got,q.x,LY[i]+1,20,COL[q.got],'center',600)}
+          else{text('✗',q.x,290,26,'#ff5a3a')}}
+        else if(q===nx){c.strokeStyle=cb;c.globalAlpha=.5;c.lineWidth=1.5;c.setLineDash([5,7]);c.beginPath();c.moveTo(q.x,244);c.lineTo(q.x,560);c.stroke();c.setLineDash([]);c.globalAlpha=1}}
+      drawParts(parts);
+      if(!(inv>0&&Math.floor(inv*14)%2)){c.save();c.shadowColor=COL[LN[lane]];c.shadowBlur=16;c.strokeStyle=COL[LN[lane]];c.lineWidth=2.5;c.beginPath();c.arc(PX,ly,34,0,TAU);c.stroke();c.restore();drawStick(PX,ly+26,{pose:'run',ph:t*14,s:.62})}
+      c.strokeStyle='#fff';c.lineWidth=1;c.globalAlpha=.3;c.beginPath();c.moveTo(PX,200);c.lineTo(PX,590);c.stroke();c.globalAlpha=1;
+      if(msg>0){c.globalAlpha=clamp(msg,0,1);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,330,W,90);text('TRANSCRIPTION',W/2,358,26,GOLD,'center',300);text('RNA has no T.  A now pairs with U.',W/2,394,18,'#fff');c.globalAlpha=1}
+      const m=clamp(ok/cols.length,0,1);c.strokeStyle='#fff6';c.lineWidth=1;c.beginPath();c.moveTo(W/2-150,36);c.lineTo(W/2+150,36);c.stroke();node(W/2-150+300*m,36,5);
+    }};
+}
+
 /* ================= THE DODECAHEDRON ================= */
 const DRAGON=(()=>{
   const cvs=document.createElement('canvas');cvs.width=cvs.height=700;const d=cvs.getContext('2d');
@@ -1208,7 +1412,7 @@ function Stage5(){
   const GY=560,w={segs:[{x1:-200,y1:GY,x2:3000,y2:GY}],minX:40,maxX:2400},p=newPlayer(120,GY),parts=[],DX=1700;
   const R=rng(21),crowd=[];for(let i=0;i<46;i++)crowd.push({x:R()*W,y:R()*H,rot:R()*TAU,s:.35+R()*.9,ph:R()*TAU,pose:['run','jump','idle','fall'][i%4]});
   let t=0,inside=0,cam=0;
-  return{name:'XVI · THE DODECAHEDRON',hint:'walk  →',parts,final:true,
+  return{name:'XX · THE DODECAHEDRON',hint:'walk  →',parts,final:true,
     update(dt){
       t+=dt;
       if(!inside){platStep(p,w,dt);cam=lerp(cam,clamp(p.x-W/2+150,0,DX-W/2),dt*4);
@@ -1292,7 +1496,7 @@ function StageTutorial(){
 }
 
 /* ---------- flow ---------- */
-const STAGES=[Stage1,Stage2,StageAngle,Stage3,StageTess,StageBlocks,StageParabola,StageCharge,StageOrbit,StageSine,StagePrimes,StageMirror,StageCoaster,StageGalton,Stage4,Stage5],NL=STAGES.length;
+const STAGES=[Stage1,Stage2,StageAngle,Stage3,StageTess,StageBlocks,StageParabola,StageCharge,StageOrbit,StageSine,StagePrimes,StageMirror,StageCoaster,StageGalton,StageMolecule,StageReaction,StageCell,StageHelix,Stage4,Stage5],NL=STAGES.length;
 const SCI=[['Kinematics','x = v · t','At constant speed you cover equal distance in equal time, so the polytope only gains when you slow down.'],
 ['The golden ratio','φ = (1 + √5) / 2 ≈ 1.618','Each square in the spiral is 1/φ the size of the last, so the curve looks the same at every zoom.'],
 ['Inclined plane','a = g · sin θ','On a 23° slope only sin 23° ≈ 39% of gravity pulls you along the line.'],
@@ -1307,6 +1511,10 @@ const SCI=[['Kinematics','x = v · t','At constant speed you cover equal distanc
 ['Optics','θ in = θ out      n₁ · sin θ₁ = n₂ · sin θ₂','A mirror returns light at the angle it arrived. Glass slows light down, which bends the beam toward the normal.'],
 ['Conservation of energy','½ · v² + g · h = constant','Height turns into speed and back again. Only the boost adds energy, and only brakes and friction remove it.'],
 ['Probability','P(k) = C(n,k) · pᵏ · (1 − p)ⁿ⁻ᵏ','Many coin flips pile up into a bell curve centred on n·p, so the middle bins fill fastest.'],
+['Chemical bonding','H 1  ·  O 2  ·  N 3  ·  C 4  bonds','Each element forms a set number of bonds, called its valence, and that fixes the formula of every molecule it builds.'],
+['Conservation of mass','atoms in = atoms out','A reaction only rearranges atoms, so every element must appear the same number of times on both sides.'],
+['Immunity','antibody + antigen → phagocytosis','Antibodies tag a virus so that white blood cells can recognise and engulf it. Bacteria can be engulfed directly.'],
+['DNA base pairing','A – T      G – C      (RNA:  A – U)','Each base pairs with only one partner, so one strand holds everything needed to rebuild the other.'],
 ['The pentagon','diagonal / side = φ','Every interior angle is 108°, and the pentagram drawn inside it hides the golden ratio.'],null];
 const BRIEF=[
 ['Run right and reach the golden φ before the rolling polytope catches you.',[['← →','run'],['SPACE','jump  (hold for a higher jump)']],'Posts trip you up and gaps are fatal. Checkpoints save your place.'],
@@ -1323,6 +1531,10 @@ const BRIEF=[
 ['Rotate the mirrors until the beam hits the gold target. Five puzzles.',[['← →','choose a mirror'],['↑ ↓','rotate it  (hold to turn faster)']],'A mirror at 45° turns the beam through a right angle.'],
 ['Ride to the end. Do not stall on a hill, break a speed gate, or miss the jump.',[['→','boost  (uses fuel)'],['←','brake']],'Each hill shows the speed you need at its foot. Brake before a red gate, then boost again.'],
 ['Catch enough φ in each of three rounds.',[['← →','move the catcher']],'Stand near the peak of the blue curve and watch the last rows of pegs. Red balls cost 2.'],
+['Build six molecules by catching the right atoms. You have 5 lives per molecule.',[['← →','run'],['SPACE','jump to reach an atom']],'The card shows which atoms are still missing. Touching an atom the molecule does not need costs a life.'],
+['Balance six chemical equations.',[['← →','choose a molecule'],['↑ ↓','change how many of it']],'Start with the element that appears in the fewest molecules, and leave O₂ or H₂ until last.'],
+['Engulf 30 pathogens before the infection bar fills. You have 4 lives.',[['← → ↑ ↓','swim'],['X  or  SPACE','fire antibodies  (hold)']],'Green bacteria are safe to touch. A purple virus hurts until an antibody has turned it gold.'],
+['Pair every base on the template strand. You have 5 lives.',[['↑ ↓','change lane']],'A pairs with T, G pairs with C. Halfway through the strand becomes RNA, where A pairs with U instead.'],
 ['Defeat the polytope. You have 5 lives.',[['X','throw φ'],['SPACE','jump'],['← →','run']],'The φ homes in when you are close. Dashed gold lines warn of a beam. Jump the shockwaves.'],
 ['Walk into the light.',[['← →','walk']],'You made it.']];
 function drawBrief(){
@@ -1348,7 +1560,7 @@ function startStage(i){G.stage=i;ST=STAGES[i]();G.banner=3.4;G.state='play';G.re
 function startTutorial(){G.stage=-1;ST=StageTutorial();G.banner=0;G.state='play';G.result=null;G.brief=false;G.paused=false;G.run={t:0,phi:G.phi,deaths:G.deaths}}
 function goto(fn){if(!G.trans)G.trans={t:0,fn,done:false}}
 function resetGame(){goto(()=>{G.state='select';ST=null;G.sel=0})}
-const LEVELS=[['I','THE LINE','c24'],['II','THE GOLDEN SPIRAL','spiral'],['III','THE ANGLE','angle'],['IV','THE VOID','tri'],['V','THE TESSERACT','tes'],['VI','THE GOLDEN BLOCKS','blocks'],['VII','THE PARABOLA','para'],['VIII','THE CHARGE','charge'],['IX','THE ORBIT','orbit'],['X','THE SINE WAVE','sine'],['XI','THE PRIMES','prime'],['XII','THE MIRROR','mirror'],['XIII','THE COASTER','coaster'],['XIV','THE GALTON BOARD','galton'],['XV','THE PENTAGON','pent'],['XVI','THE DODECAHEDRON','dod']];
+const LEVELS=[['I','THE LINE','c24'],['II','THE GOLDEN SPIRAL','spiral'],['III','THE ANGLE','angle'],['IV','THE VOID','tri'],['V','THE TESSERACT','tes'],['VI','THE GOLDEN BLOCKS','blocks'],['VII','THE PARABOLA','para'],['VIII','THE CHARGE','charge'],['IX','THE ORBIT','orbit'],['X','THE SINE WAVE','sine'],['XI','THE PRIMES','prime'],['XII','THE MIRROR','mirror'],['XIII','THE COASTER','coaster'],['XIV','THE GALTON BOARD','galton'],['XV','THE MOLECULE','mol'],['XVI','THE REACTION','react'],['XVII','THE CELL','cell'],['XVIII','THE HELIX','helix'],['XIX','THE PENTAGON','pent'],['XX','THE DODECAHEDRON','dod']];
 const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0')+'.'+Math.floor(t*10%10);
 
 function update(dt){
@@ -1422,6 +1634,13 @@ function levelIcon(kind,x,y,r,t){
     const u=.2+((t*.25)%1)*.55;node(x-r+u*r*2,y+r*.45-r*.9*Math.exp(-(((u-.2)/.16)**2))-r*.6*Math.exp(-(((u-.72)/.15)**2))-4,3.5)}
   else if(kind==='galton'){[1,3,6,8,6,3,1].forEach((v,i)=>{c.fillStyle=i===3?GOLD:'rgba(255,255,255,.75)';c.fillRect(x-r*.84+i*r*.24,y+r*.6-v*r*.13,r*.19,v*r*.13)});
     c.strokeStyle='#fff';c.lineWidth=1;c.beginPath();c.moveTo(x-r*.9,y+r*.6);c.lineTo(x+r*.9,y+r*.6);c.stroke()}
+  else if(kind==='mol'){c.strokeStyle='#fff';c.lineWidth=2;c.beginPath();c.moveTo(x,y-r*.15);c.lineTo(x-r*.6,y+r*.4);c.moveTo(x,y-r*.15);c.lineTo(x+r*.6,y+r*.4);c.stroke();
+    for(const q of[[0,-.15,'#ff5a4a',.3],[-.6,.4,'#fff',.2],[.6,.4,'#fff',.2]]){c.fillStyle='#0b0b0b';c.strokeStyle=q[2];c.lineWidth=2;c.beginPath();c.arc(x+q[0]*r,y+q[1]*r,q[3]*r,0,TAU);c.fill();c.stroke()}}
+  else if(kind==='react'){text('2H₂ + O₂',x,y-r*.3,14,'#fff','center',400);text('→  2H₂O',x,y+r*.4,14,GOLD,'center',400)}
+  else if(kind==='cell'){c.strokeStyle='#dff3ff';c.lineWidth=1.8;c.beginPath();for(let k=0;k<=20;k++){const a=k*TAU/20,rr=r*.6+Math.sin(a*3+t*2)*r*.07;k?c.lineTo(x-r*.2+Math.cos(a)*rr,y+Math.sin(a)*rr):c.moveTo(x-r*.2+Math.cos(a)*rr,y+Math.sin(a)*rr)}c.closePath();c.stroke();
+    c.strokeStyle='#b58cff';c.lineWidth=1.4;c.beginPath();for(let k=0;k<8;k++){const a=k*TAU/8+t;c.moveTo(x+r*.75+Math.cos(a)*r*.12,y+Math.sin(a)*r*.12);c.lineTo(x+r*.75+Math.cos(a)*r*.26,y+Math.sin(a)*r*.26)}c.stroke();c.beginPath();c.arc(x+r*.75,y,r*.12,0,TAU);c.stroke()}
+  else if(kind==='helix'){for(const s2 of[0,Math.PI]){c.strokeStyle=s2?'#6fd0ff':GOLD;c.lineWidth=1.8;c.beginPath();for(let i=0;i<=24;i++){const px=x-r+i/24*r*2,py=y+Math.sin(i/24*TAU*1.4+t*2+s2)*r*.45;i?c.lineTo(px,py):c.moveTo(px,py)}c.stroke()}
+    c.strokeStyle='#fff';c.lineWidth=1;c.globalAlpha*=.5;c.beginPath();for(let i=1;i<24;i+=3){const px=x-r+i/24*r*2,a=i/24*TAU*1.4+t*2;c.moveTo(px,y+Math.sin(a)*r*.45);c.lineTo(px,y-Math.sin(a)*r*.45)}c.stroke();c.globalAlpha/=.5}
   else if(kind==='pent'){c.strokeStyle=GOLD;c.lineWidth=1.4;c.beginPath();for(let i=0;i<=5;i++){const a=-Math.PI/2+i*TAU/5;c.lineTo(x+Math.cos(a)*r*.75,y+Math.sin(a)*r*.75)}c.stroke();
     c.strokeStyle='#fff';c.lineWidth=1;c.beginPath();for(let i=0;i<=5;i++){const a=-Math.PI/2+i*2*TAU/5;c.lineTo(x+Math.cos(a)*r*.75,y+Math.sin(a)*r*.75)}c.stroke()}
   else{c.strokeStyle='#fff';c.lineWidth=1.6;let rr=r*.95,cx=x-r*.25,cy=y+r*.45,a=Math.PI+t*.0;
@@ -1469,9 +1688,9 @@ function drawHelp(){
   c.fillStyle='rgba(0,0,0,.86)';c.fillRect(0,0,W,H);
   text('CONTROLS',W/2,56,28,'#fff','center',200);
   const G1=[['← →  /  A D','move'],['SPACE  /  ↑  /  W','jump'],['X  /  J','use φ  (throw · hook · resize · flip)'],['P','pause'],['R','retry chapter from checkpoint'],['ESC','pause  →  chapter select'],['M','mute sound'],['B','toggle glow'],['H','this screen'],['T','tutorial  (from the title or chapter screen)']];
-  const G2=[['I  The Line','run, jump gaps and posts'],['II  Golden Spiral','SPACE jump · stay low under hanging nodes'],['III  The Angle','SPACE jump · ← brake · → tuck'],['IV  The Void','← → ↑ ↓ steer'],['V  The Tesseract','hold X hook · release to fly · ← → pump'],['VI  Golden Blocks','push · X resize · hold ↓ to drag'],['VII  The Parabola','↑ ↓ angle · ← → power · SPACE launch'],['VIII  The Charge','X or SPACE flip charge'],['IX  The Orbit','← → ↑ ↓ thrust'],['X  The Sine Wave','run and jump'],['XI  The Primes','run and jump · primes only'],['XII  The Mirror','← → choose · ↑ ↓ rotate'],['XIII  The Coaster','→ boost · ← brake'],['XIV  The Galton Board','← → move and catch'],['XV  The Pentagon','X throw φ · SPACE jump']];
+  const G2=[['I  The Line','run, jump gaps and posts'],['II  Golden Spiral','SPACE jump · stay low under hanging nodes'],['III  The Angle','SPACE jump · ← brake · → tuck'],['IV  The Void','← → ↑ ↓ steer'],['V  The Tesseract','hold X hook · release to fly · ← → pump'],['VI  Golden Blocks','push · X resize · hold ↓ to drag'],['VII  The Parabola','↑ ↓ angle · ← → power · SPACE launch'],['VIII  The Charge','X or SPACE flip charge'],['IX  The Orbit','← → ↑ ↓ thrust'],['X  The Sine Wave','run and jump'],['XI  The Primes','run and jump · primes only'],['XII  The Mirror','← → choose · ↑ ↓ rotate'],['XIII  The Coaster','→ boost · ← brake'],['XIV  The Galton Board','← → move and catch'],['XV  The Molecule','run, jump, catch the right atoms'],['XVI  The Reaction','← → choose · ↑ ↓ change count'],['XVII  The Cell','← → ↑ ↓ swim · X antibodies'],['XVIII  The Helix','↑ ↓ change lane'],['XIX  The Pentagon','X throw φ · SPACE jump']];
   text('EVERYWHERE',120,110,12,GOLD,'left',500);G1.forEach((r,i)=>{text(r[0],120,140+i*30,15,'#fff','left',500);text(r[1],300,140+i*30,15,'#fffb','left')});
-  text('PER CHAPTER',680,110,12,GOLD,'left',500);G2.forEach((r,i)=>{text(r[0],680,140+i*30,15,'#fff','left',500);text(r[1],880,140+i*30,15,'#fffb','left')});
+  text('PER CHAPTER',680,110,12,GOLD,'left',500);G2.forEach((r,i)=>{text(r[0],680,136+i*27,14,'#fff','left',500);text(r[1],880,136+i*27,14,'#fffb','left')});
   text('touch screens get on-screen buttons      ·      H  or  ESC  to close',W/2,676,14,'#fff9');
 }
 function drawTitle(){

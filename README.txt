@@ -1,6 +1,6 @@
 STICKMAN VS GEOMETRY
 ====================
-A 16-chapter physics and maths adventure. No install needed on a computer:
+A 20-chapter adventure through geometry, physics, maths, chemistry and biology. No install needed on a computer:
 double-click index.html.
 
 PLAY ON A PHONE
