@@ -4,7 +4,7 @@ const GY := 560.0
 var segs: Array = []
 var blocks := [Rect2(280, 470, 150, 90), Rect2(720, 425, 160, 135), Rect2(1170, 470, 150, 90)]
 var p := {}
-var B := {"p": Vector2(1250, 210), "r": 100.0, "hp": 28, "max": 28, "st": "intro", "t": 0.0, "flash": 0.0, "vy": 0.0, "beams": [], "fired": false}
+var B := {"p": Vector2(1250, 210), "r": 100.0, "hp": 40, "max": 40, "st": "intro", "t": 0.0, "flash": 0.0, "vy": 0.0, "beams": [], "fired": false}
 var proj := {}
 var waves: Array = []
 var shards: Array = []
@@ -18,9 +18,11 @@ func begin() -> void:
 	p = new_plat(180.0, GY)
 
 func phase() -> int:
-	return 1 if B["hp"] > 18 else (2 if B["hp"] > 9 else 3)
+	return 1 if B["hp"] > 26 else (2 if B["hp"] > 13 else 3)
 
 func dmg(n: int) -> void:
+	if B["st"] in ["intro", "slamA", "slamB", "slamC"]:   # armoured while it winds up and dives; strike it when it hovers or lands
+		m.snd("tick", -4.0); m.fx.burst(B["p"], 6, Color.WHITE, 260.0, 0.0); return
 	B["hp"] -= n; B["flash"] = 0.15; m.shake = 10.0; m.snd("hit"); hap(25); m.fx.burst(B["p"], 16, GOLD, 420.0, 200.0); score()
 	if B["hp"] <= 0:
 		dying = 0.001; m.shake = 30.0; m.snd("boom"); waves.clear(); shards.clear(); B["beams"] = []
@@ -98,7 +100,7 @@ func tick(d: float) -> void:
 		if (s["p"] as Vector2).distance_to(hp_ + Vector2(0, -32)) < 30.0: hurt_dir.call(signf(p["x"] - s["p"].x) if p["x"] != s["p"].x else 1.0)
 		if s["p"].y > GY: m.fx.burst(Vector2(s["p"].x, GY), 8, GOLD, 300.0); shards.remove_at(i)
 	cam_p = Vector2(800, 300); cam_z = 0.8
-	info = "every interior angle of a pentagon is 108°     diagonal / side = φ     boss %d / %d" % [maxi(0, B["hp"]), B["max"]]
+	info = "diagonal / side = φ     armoured while it dives: strike when it hovers or lands     boss %d / %d" % [maxi(0, B["hp"]), B["max"]]
 
 func _draw() -> void:
 	world_xf()
