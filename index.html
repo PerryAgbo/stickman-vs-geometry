@@ -16,7 +16,7 @@
   html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
   canvas{position:absolute;display:block}
   #touch{position:absolute;inset:0;display:none;pointer-events:none}
-  #touch button{position:absolute;width:14vmin;height:14vmin;border-radius:50%;border:2px solid #fff8;background:#ffffff14;color:#fff;font:600 6vmin Georgia,serif;pointer-events:auto;-webkit-tap-highlight-color:transparent;padding:0}
+  #touch button{position:absolute;width:15vmin;height:15vmin;border-radius:50%;border:2px solid #fff6;background:#ffffff10;touch-action:none;color:#fff;font:600 6vmin Georgia,serif;pointer-events:auto;-webkit-tap-highlight-color:transparent;padding:0}
   #touch button.s{width:9vmin;height:9vmin;font-size:3.6vmin;top:2vmin}
 </style>
 </head>
@@ -43,7 +43,7 @@ let ORANGE='#3aa0ff';const GOLD='#ffd23a',HEROES=[['#3aa0ff','blue'],['#ff6a0d',
 const cv=document.getElementById('g'),c=cv.getContext('2d');
 let VS=1;
 function resize(){
-  const dpr=Math.min(window.devicePixelRatio||1,2),s=Math.min(innerWidth/W,innerHeight/H);
+  const dpr=Math.min(window.devicePixelRatio||1,('ontouchstart' in window||navigator.maxTouchPoints>0)?1.5:2),s=Math.min(innerWidth/W,innerHeight/H);
   cv.style.width=W*s+'px';cv.style.height=H*s+'px';
   cv.style.left=(innerWidth-W*s)/2+'px';cv.style.top=(innerHeight-H*s)/2+'px';
   cv.width=Math.round(W*s*dpr);cv.height=Math.round(H*s*dpr);VS=s*dpr;
@@ -65,7 +65,7 @@ addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
 const held=n=>MAP[n].some(k=>keys[k]),tapped=n=>MAP[n].some(k=>hit[k]);
 const TOUCH='ontouchstart' in window||navigator.maxTouchPoints>0;
-cv.addEventListener('pointerdown',e=>{ainit();const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;
+cv.addEventListener('pointerdown',e=>{ainit();if(TOUCH&&!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;
   if(G.state==='select'&&!G.help){const i=cardAt(x,y);if(i<0)return;G.sel=i}
   if(G.state==='title'&&y>556&&y<612){const i=Math.floor((x-90)/46);if(i>=0&&i<HEROES.length){setHero(i);return}}
   hit.Enter=true});
@@ -300,7 +300,7 @@ const SAVE=(()=>{try{const a=localStorage.getItem('svg_save6');if(a)return Objec
 if(SAVE.color)ORANGE=SAVE.color;
 const setHero=i=>{const n=HEROES.length;i=(i+n)%n;ORANGE=HEROES[i][0];SAVE.color=ORANGE;persist();tone(500+i*60,.07,'sine',.08)};
 const persist=()=>{try{localStorage.setItem('svg_save6',JSON.stringify(SAVE))}catch(e){}};
-G.sel=0;G.bloom=true;G.run={t:0,phi:0,deaths:0};G.result=null;
+G.sel=0;G.bloom=!TOUCH;G.run={t:0,phi:0,deaths:0};G.result=null;
 
 /* ---------- shared platformer physics ---------- */
 const RUN=390,JUMP=820,GRAV=2300;
