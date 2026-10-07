@@ -6,8 +6,6 @@ var bolts: Array = []
 var p := Vector2(240, 360)
 var v := Vector2.ZERO
 var rot := 0.0
-var dash_t := 0.0
-var dash_cd := 0.0
 var dd := Vector2.RIGHT
 var cd := 0.0
 var spawn := 1.5
@@ -16,7 +14,7 @@ var win_t := 0.0
 var kills := 0
 
 func begin() -> void:
-	title = "XX · THE SKY"; max_hp = 6; hp = 6
+	title = "XX · THE SKY"; btn = [["attack", "ATK"], ["dash", "DASH"]]; max_hp = 6; hp = 6
 
 func hit_e(e: Dictionary, n: int) -> void:
 	if e["dead"]: return
@@ -30,12 +28,12 @@ func shoot(x: Vector2, a: float, sp := 380.0) -> void:
 
 func tick(d: float) -> void:
 	dash_cd -= d; cd -= d; atk_tick(d)
-	var axy := Vector2(ax(), ay())
+	var axy := stick()
 	if Input.is_action_just_pressed("dash") and dash_cd <= 0.0:
 		dash_t = 0.17; dash_cd = 0.5; dd = axy.normalized() if axy != Vector2.ZERO else Vector2.RIGHT; inv = maxf(inv, 0.25); m.snd("dash")
 	if dash_t > 0.0: dash_t -= d; v = dd * 1050.0
 	else: v = v.lerp(axy * Vector2(450.0, 410.0), d * 9.0)
-	p.x = clampf(p.x + v.x * d, 60.0, W - 260.0); p.y = clampf(p.y + v.y * d, 110.0, H - 60.0); rot = lerpf(rot, v.y / 1400.0, d * 10.0)
+	p.x = clampf(p.x + v.x * d, 60.0, minf(W - 260.0, safe_x() - 50.0)); p.y = clampf(p.y + v.y * d, 110.0, H - 60.0); rot = lerpf(rot, v.y / 1400.0, d * 10.0)
 	if cd <= 0.0: cd = 0.15; bolts.append({"p": p + Vector2(34, -34), "v": Vector2(1150, 0), "mine": true}); m.snd("tick", -14.0)
 	if randf() < d * 40.0: m.fx.burst(p + Vector2(-30, -30), 1, GOLD, 300.0, 0.0)
 	if boss.is_empty():

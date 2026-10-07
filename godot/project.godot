@@ -27,6 +27,11 @@ driver/output_latency.android=10
 [input_devices]
 pointing/emulate_touch_from_mouse=true
 
+[physics]
+
+; 120 steps a second: movement stays smooth on 90 and 120 Hz phone screens and taps are read sooner
+common/physics_ticks_per_second=120
+
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

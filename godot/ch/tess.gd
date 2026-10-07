@@ -13,7 +13,7 @@ var last_n := -1
 var last_t := -9.0
 
 func begin() -> void:
-	title = "V · THE TESSERACT"; max_hp = 3; hp = 3
+	title = "V · THE TESSERACT"; btn = [["attack", "HOOK"], ["jump", "JUMP"], ["dash", "DASH"]]; can_dash = true; max_hp = 3; hp = 3
 	var rng := RandomNumberGenerator.new(); rng.seed = 31
 	var x := 300.0; var y := 600.0
 	segs.append({"x1": -150.0, "y1": 600.0, "x2": 300.0, "y2": 600.0}); cps.append(Vector2(120, 600))
@@ -64,7 +64,7 @@ func tick(d: float) -> void:
 		if e["dead"]: continue
 		e["t"] += d; var ep: Vector2 = e["p"] + Vector2(0, sin(e["t"] * 2.2) * 16.0)
 		if atk_hits(hp_, p["face"], ep, 22.0): e["dead"] = true; kill_fx(ep); p["dj"] = false; p["vy"] = minf(p["vy"], -560.0); p["g"] = null
-		elif p["stun"] <= 0.0 and ep.distance_to(hp_ + Vector2(0, -44)) < 40.0: e["dead"] = true; p["stun"] = 0.2; p["vx"] *= 0.4; m.combo = 0; m.snd("hurt", -4.0); m.fx.burst(ep, 14, Color.WHITE)
+		elif p["stun"] <= 0.0 and dash_t <= 0.0 and ep.distance_to(hp_ + Vector2(0, -44)) < 40.0: e["dead"] = true; p["stun"] = 0.2; p["vx"] *= 0.4; m.combo = 0; m.snd("hurt", -4.0); m.fx.burst(ep, 14, Color.WHITE)
 	if p["g"] != null:
 		for q in cps:
 			if q.x >= p["g"]["x1"] and q.x <= p["g"]["x2"]: cp = q

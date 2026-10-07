@@ -12,7 +12,7 @@ var msg := 0.0
 var said := false
 
 func begin() -> void:
-	title = "XVIII · THE HELIX"; max_hp = 5; hp = 5
+	title = "XVIII · THE HELIX"; btn = []; max_hp = 5; hp = 5
 	var rng := RandomNumberGenerator.new(); rng.seed = 71
 	for i in 40: cols.append({"b": "ATGC"[rng.randi() % 4], "rna": i >= 22, "x": 1500.0 + i * GAP + (500.0 if i >= 22 else 0.0), "done": false, "got": ""})
 

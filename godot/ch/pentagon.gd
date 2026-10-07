@@ -12,10 +12,10 @@ var dying := 0.0
 var cd := 0.0
 
 func begin() -> void:
-	title = "XXI · THE PENTAGON"; max_hp = 5; hp = 5
+	title = "XXI · THE PENTAGON"; btn = [["attack", "ATK"], ["jump", "JUMP"], ["dash", "DASH"]]; can_dash = true; max_hp = 5; hp = 5
 	segs = [{"x1": -100.0, "y1": GY, "x2": 1700.0, "y2": GY}]
 	for b in blocks: segs.append({"x1": b.position.x, "y1": b.position.y, "x2": b.end.x, "y2": b.position.y})
-	p = new_plat(180.0, GY)
+	p = new_plat(180.0, GY); cam_p = Vector2(800, 300); cam_z = 0.8
 
 func phase() -> int:
 	return 1 if B["hp"] > 26 else (2 if B["hp"] > 13 else 3)
@@ -99,7 +99,7 @@ func tick(d: float) -> void:
 		var s: Dictionary = shards[i]; s["p"].y += s["v"] * d; s["rot"] += d * 5.0
 		if (s["p"] as Vector2).distance_to(hp_ + Vector2(0, -32)) < 30.0: hurt_dir.call(signf(p["x"] - s["p"].x) if p["x"] != s["p"].x else 1.0)
 		if s["p"].y > GY: m.fx.burst(Vector2(s["p"].x, GY), 8, GOLD, 300.0); shards.remove_at(i)
-	cam_p = Vector2(800, 300); cam_z = 0.8
+	cam_keep(p["x"])   # the camera slides so the hero is never under a thumb
 	info = "diagonal / side = φ     armoured while it dives: strike when it hovers or lands     boss %d / %d" % [maxi(0, B["hp"]), B["max"]]
 
 func _draw() -> void:

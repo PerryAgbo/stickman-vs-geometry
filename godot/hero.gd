@@ -35,6 +35,9 @@ var ph := 0.0
 var land_t := 0.0
 var rush := 0.0
 var can_throw := true
+var atk_buf := 0.0      # a tap slightly too early still comes out
+var dash_buf := 0.0
+var jump_hold := 0.0    # how long jump has been held since the last press
 var foes: Array = []
 var ghosts: Array = []
 
@@ -63,20 +66,25 @@ func _nearest() -> Array:
 			best = f
 	return [best, bd]
 
-func _attack() -> void:
+func _attack(ax: float) -> void:
 	var n := _nearest()
 	var near: Node2D = n[0]
 	var nd: float = n[1]
+	# Turn to the nearest enemy, but never against the way the player is steering.
 	if near and nd < 280.0:
-		face = 1 if near.global_position.x >= global_position.x else -1
-	if near and nd > 150.0 and can_throw and throw_cd <= 0.0:   # out of sword reach: the φ flies instead
-		throw_cd = 0.4
-		throw_t = 0.16
+		var want := 1 if near.global_position.x >= global_position.x else -1
+		if ax == 0.0 or signf(ax) == want:
+			face = want
+	elif ax != 0.0:
+		face = 1 if ax > 0.0 else -1
+	# The blade always swings, so the button always answers. If the enemy ahead is beyond its reach, the φ flies as well.
+	if near and nd > 150.0 and nd < 700.0 and can_throw and throw_cd <= 0.0 and (near.global_position.x - global_position.x) * face > 0.0:
+		throw_cd = 0.6
 		throw_phi.emit(near)
-		return
-	if Input.is_action_pressed("move_up"):
+	# Rising slash and heavy slam need a deliberate straight up or down, not a thumb resting on a diagonal.
+	if Input.get_action_strength("move_up") > 0.7 and absf(ax) < 0.35:
 		combo = 2
-	elif Input.is_action_pressed("move_down"):
+	elif Input.get_action_strength("move_down") > 0.7 and absf(ax) < 0.35:
 		combo = 3
 	else:
 		combo = combo % 3 + 1 if combo_t > 0.0 else 1
@@ -85,7 +93,7 @@ func _attack() -> void:
 	combo_t = 0.75
 	atk_id += 1
 	sound.emit("slash")
-	if is_on_floor():
+	if is_on_floor() and (ax == 0.0 or signf(ax) == face):   # the lunge never fights the stick
 		velocity.x += face * (340.0 if combo == 3 else 180.0)
 
 ## Damage this swing deals to something at `pos` with radius `r` (0 if it misses or already hit it).
@@ -128,9 +136,15 @@ func _physics_process(delta: float) -> void:
 	var ax := Input.get_axis("move_left", "move_right")
 	var on := is_on_floor()
 	var maxv := 140.0 if stun > 0.0 else RUN * (1.3 if rush > 0.0 else 1.0)
-	if Input.is_action_just_pressed("attack") and atk_t <= 0.05 and stun <= 0.0:
-		_attack()
-	if Input.is_action_just_pressed("dash") and dash_cd <= 0.0 and stun <= 0.0:
+	var real := delta / maxf(Engine.time_scale, 0.05)   # buffers run on real time, so hit-stop never eats a tap
+	atk_buf = 0.18 if Input.is_action_just_pressed("attack") else atk_buf - real
+	dash_buf = 0.15 if Input.is_action_just_pressed("dash") else dash_buf - real
+	jump_hold = jump_hold + real if (Input.is_action_pressed("jump") and not Input.is_action_just_pressed("jump")) else 0.0
+	if atk_buf > 0.0 and atk_t <= 0.05 and stun <= 0.0:
+		atk_buf = 0.0
+		_attack(ax)
+	if dash_buf > 0.0 and dash_cd <= 0.0 and stun <= 0.0:
+		dash_buf = 0.0
 		dash_id += 1
 		dash_t = 0.17
 		dash_cd = 0.55
@@ -150,8 +164,8 @@ func _physics_process(delta: float) -> void:
 			if atk_t <= 0.0:
 				face = 1 if ax > 0.0 else -1
 		else:
-			velocity.x = move_toward(velocity.x, 0.0, (3000.0 if on else 500.0) * delta)
-		buf = 0.12 if Input.is_action_just_pressed("jump") else buf - delta
+			velocity.x = move_toward(velocity.x, 0.0, (3000.0 if on else 1500.0) * delta)   # letting go in the air stops you
+		buf = 0.12 if Input.is_action_just_pressed("jump") else buf - real
 		coy = 0.1 if on else coy - delta
 		if buf > 0.0 and coy > 0.0:
 			velocity.y = -JUMP
@@ -165,7 +179,7 @@ func _physics_process(delta: float) -> void:
 		if on:
 			dj = false
 			fuel = minf(1.0, fuel + delta * 1.2)
-		elif Input.is_action_pressed("jump") and dj and fuel > 0.0 and velocity.y > -300.0:
+		elif Input.is_action_pressed("jump") and dj and fuel > 0.0 and jump_hold > 0.28 and velocity.y > -300.0:   # flight is a deliberate hold, not a side effect of a double jump
 			flying = true
 			fuel -= delta / 1.6
 			velocity.y = lerpf(velocity.y, -250.0, delta * 9.0)

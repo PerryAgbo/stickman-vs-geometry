@@ -7,7 +7,7 @@ var inside := 0.0
 var crowd: Array = []
 
 func begin() -> void:
-	title = "XXII · THE DODECAHEDRON"; max_hp = 1; hp = 1
+	title = "XXII · THE DODECAHEDRON"; btn = [["jump", "JUMP"]]; max_hp = 1; hp = 1
 	p = new_plat(120.0, GY); cam_p = Vector2(640, 360)
 	var rng := RandomNumberGenerator.new(); rng.seed = 21
 	for i in 18: crowd.append([Vector2(rng.randf() * W, 160.0 + rng.randf() * 500.0), 0.35 + rng.randf() * 0.6, rng.randf() * TAU, ["run", "jump", "idle", "fall"][i % 4]])

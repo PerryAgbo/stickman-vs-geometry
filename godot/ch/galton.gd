@@ -21,7 +21,7 @@ var face := 1
 var endt := 0.0
 
 func begin() -> void:
-	title = "XIV · THE GALTON BOARD"; max_hp = 3; hp = 3; start_round()
+	title = "XIV · THE GALTON BOARD"; btn = []; max_hp = 3; hp = 3; start_round()
 
 func start_round() -> void:
 	var rd: Dictionary = RD[ri]; balls = []; hist = []; sc = 0; spawn = 0.8; endt = 0.0; queue = []

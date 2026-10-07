@@ -251,10 +251,8 @@ func start(lv: String) -> void:
 	cam.position = hero.position + Vector2(170, -140)
 
 func hitstop(sec: float) -> void:
-	Engine.time_scale = 0.05
-	await get_tree().create_timer(sec, true, false, true).timeout
-	if state == "play":
-		Engine.time_scale = 1.0
+	if juice:
+		juice.hitstop(sec)   # juice owns the clock, so a freeze and a slow-down never fight
 
 func _on_foe_died(f: Node2D) -> void:
 	foes.erase(f)
@@ -282,7 +280,8 @@ func _on_foe_bumped(f: Node2D) -> void:
 
 ## Test pilot for the two platform chapters. Automated runs only.
 func _pilot() -> void:
-	for a in ["move_left", "move_right", "jump", "attack"]: Input.action_release(a)
+	for a in ["move_left", "move_right", "attack"]: Input.action_release(a)
+	var want_jump := false
 	var near: Node2D = null
 	var bd := 1e9
 	for f in foes:
@@ -293,21 +292,24 @@ func _pilot() -> void:
 		if near:
 			var dx: float = near.global_position.x - hero.global_position.x
 			if absf(dx) > 90.0: Input.action_press("move_right" if dx > 0.0 else "move_left")
-			if near.global_position.y < hero.global_position.y - 150.0 and hero.is_on_floor(): Input.action_press("jump")
+			want_jump = near.global_position.y < hero.global_position.y - 150.0 and hero.is_on_floor()
 	else:
 		Input.action_press("move_right")
 		var space := get_world_2d().direct_space_state
 		var q := PhysicsRayQueryParameters2D.create(hero.global_position + Vector2(34, -20), hero.global_position + Vector2(34, 260))
 		var ahead := not space.intersect_ray(q).is_empty()
-		if hero.is_on_floor() and not ahead: Input.action_press("jump")
-		elif not hero.is_on_floor(): Input.action_press("jump")
+		# play it like a person: hold jump through the air, let go for a moment while falling so the next press is the double jump, then keep holding to fly
+		if hero.is_on_floor(): want_jump = not ahead
+		else: want_jump = not (hero.velocity.y > 50.0 and not hero.dj and not ahead and _frames % 2 == 0)
+	if want_jump: Input.action_press("jump")
+	else: Input.action_release("jump")
 	if _frames % 5 == 0 and near and bd < 240.0: Input.action_press("attack")
 
 func _finish(win: bool) -> void:
 	if state != "play":
 		return
 	if _bot or _rand:
-		print("RESULT ", level, " ", "win" if win else "lose", " time=", snappedf(time, 0.1), " best_combo=", best, " wave=", wave + 1)
+		print("RESULT ", level, " ", "win" if win else "lose", " time=", snappedf(time, 0.1), " best_combo=", best, " wave=", wave + 1, " hp=", (hero.hp if hero else (ch.hp if ch else -1)), " x=", (int(hero.position.x) if hero else -1))
 		get_tree().quit()
 	won = win
 	state = "result"
@@ -371,7 +373,10 @@ func _process(delta: float) -> void:
 				spawn_t = 0.9
 				var k: String = queue.pop_front()
 				var side := -1.0 if randf() < 0.5 else 1.0
-				var px := clampf(hero.position.x + side * randf_range(520, 740), 80, 1820)
+				var edge: float = hud.size.x / 2.0 + 70.0   # just off screen, so they walk in instead of appearing under a thumb
+				var px := clampf(cam.position.x + side * edge, 80, 1820)
+				if absf(px - hero.position.x) < 420.0:
+					px = clampf(cam.position.x - side * edge, 80, 1820)
 				_spawn(k, Vector2(px, 560.0 - 46.0 if k in ["tri", "riv", "hex"] else randf_range(170, 340)))
 		elif foes.is_empty():
 			if wave < WAVES.size() - 1:
@@ -382,11 +387,17 @@ func _process(delta: float) -> void:
 				snd("clear", -6.0)
 			else:
 				_finish(true)
-		cam.position = cam.position.lerp(Vector2(clampf(hero.position.x, 640, 1280), 300), delta * 5.0)
+		# The camera moves only when the hero reaches the left thumb or the buttons, so he is never under a hand.
+		var hw: float = hud.size.x / 2.0
+		var lo: float = (280.0 if touch else 120.0) - hw
+		var hi: float = ((hud.ctrl_left() - 70.0) if touch else (hud.size.x - 120.0)) - hw
+		var want := clampf(clampf(cam.position.x, hw - 60.0, 1960.0 - hw), hero.position.x - hi, hero.position.x - lo)
+		cam.position = Vector2(lerpf(cam.position.x, want, minf(1.0, delta * 14.0)), lerpf(cam.position.y, 300.0, delta * 5.0))
 	else:
 		var gap := hero.position.x - chaser_x
 		var v := 292.0 + minf(hero.position.x / 12000.0, 1.0) * 66.0
 		if gap > 820.0: v = 440.0
+		if hero.position.x < 140.0 and time < 8.0: v = 0.0   # the wave waits for the first steps, so finding the stick is never fatal
 		chaser_x += v * delta
 		chaser.position = Vector2(chaser_x, lerpf(chaser.position.y if chaser.position != Vector2.ZERO else 320.0, hero.position.y - 150.0, delta * 3.0))
 		chaser.rotation += delta * 2.0
@@ -404,7 +415,8 @@ func _process(delta: float) -> void:
 			hero.velocity = Vector2.ZERO
 			chaser_x = minf(chaser_x, cp.x - 720.0)
 		if hero.position.x > goal_x: _finish(true)
-		cam.position = cam.position.lerp(hero.position + Vector2(170, -140), delta * 6.0)
+		# follow sideways quickly but only drift up and down, so every jump does not shake the view
+		cam.position = Vector2(lerpf(cam.position.x, hero.position.x + 170.0, minf(1.0, delta * 6.0)), lerpf(cam.position.y, hero.position.y - 140.0, minf(1.0, delta * 2.6)))
 	if hero.hp <= 0: _finish(false)
 
 ## Phone vibration; chapters call this guarded with has_method.

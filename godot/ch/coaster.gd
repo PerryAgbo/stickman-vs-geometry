@@ -17,7 +17,7 @@ var av := Vector2.ZERO
 var cp := [0.0, 40.0, 100.0]
 
 func begin() -> void:
-	title = "XIII · THE COASTER"; max_hp = 3; hp = 3; cam_p = Vector2(200, 260)
+	title = "XIII · THE COASTER"; btn = []; max_hp = 3; hp = 3; cam_p = Vector2(200, 260)
 
 func yT(xx: float) -> float:
 	var y := BASE

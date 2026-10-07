@@ -6,7 +6,7 @@ extends Node
 
 const GOLD := Color("ffd23a")
 const WORDS := {3: "NICE", 5: "SHARP", 8: "FIERCE", 12: "SAVAGE", 20: "LEGEND"}
-const VERSION := "0.2"
+const VERSION := "0.3"
 
 var m: Node2D
 var save: RefCounted
@@ -25,6 +25,8 @@ var grade := ""
 var best_time := 0.0
 var zoom_k := 0.0
 var _slow_t := 0.0
+var _slow_scale := 1.0
+var _stop_t := 0.0
 var _last_state := ""
 var _last_hero: Node = null
 var _last_wave := -1
@@ -109,8 +111,12 @@ func restart() -> void:
 	m.start(lv)
 
 func slowmo(sec: float, scale := 0.25) -> void:
-	Engine.time_scale = scale
-	_slow_t = sec
+	_slow_scale = scale if _slow_t <= 0.0 else minf(_slow_scale, scale)
+	_slow_t = maxf(_slow_t, sec)
+
+## A few frames of freeze when a blow lands.
+func hitstop(sec: float) -> void:
+	_stop_t = maxf(_stop_t, sec)
 
 func _hero_pos() -> Vector2:
 	return m.hero.global_position if m.hero else Vector2(640, 360)
@@ -265,10 +271,14 @@ func _process(delta: float) -> void:
 	combo_pop = maxf(0.0, combo_pop - real * 4.0)
 	banner_t = maxf(0.0, banner_t - real)
 	toast_t = maxf(0.0, toast_t - real)
-	if _slow_t > 0.0:
-		_slow_t -= real
-		if _slow_t <= 0.0 and m.state != "pause":
-			Engine.time_scale = 1.0
+	# One owner for the clock: a short freeze on a hit, a longer slow-down on a big moment.
+	if m.state == "menu":
+		_slow_t = 0.0
+		_stop_t = 0.0
+	elif m.state != "pause":
+		_stop_t = maxf(0.0, _stop_t - real)
+		_slow_t = maxf(0.0, _slow_t - real)
+		Engine.time_scale = 0.05 if _stop_t > 0.0 else (_slow_scale if _slow_t > 0.0 else 1.0)
 	zoom_k = lerpf(zoom_k, 0.0, 1.0 - exp(-real * 7.0))
 	m.cam.zoom = Vector2.ONE * (1.0 + zoom_k)
 	if m._music:

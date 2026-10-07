@@ -30,7 +30,7 @@ func fac(n: int) -> String:
 	return "%d = %s" % [n, " × ".join(f)]
 
 func begin() -> void:
-	title = "XI · THE PRIMES"; max_hp = 3; hp = 3
+	title = "XI · THE PRIMES"; btn = [["attack", "ATK"], ["jump", "JUMP"], ["dash", "DASH"]]; can_dash = true; max_hp = 3; hp = 3
 	for n in range(1, NN + 1): tiles.append({"n": n, "x1": 250.0 + n * TW, "y1": Y0, "x2": 250.0 + n * TW + TW, "y2": Y0, "prime": is_p(n), "gone": false, "lit": false})
 	var a := 2
 	for n in range(3, NN + 1):

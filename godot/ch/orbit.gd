@@ -7,7 +7,7 @@ var v := Vector2.ZERO
 var ri := 0
 
 func begin() -> void:
-	title = "IX · THE ORBIT"; max_hp = 3; hp = 3; cam_z = 0.85; cam_p = Vector2(300, 360)
+	title = "IX · THE ORBIT"; btn = []; max_hp = 3; hp = 3; cam_z = 0.85; cam_p = Vector2(300, 360)
 
 func grav(x: Vector2) -> Vector2:
 	var a := Vector2.ZERO
@@ -21,7 +21,7 @@ func respawn() -> void:
 	p = rings[ri - 1] if ri > 0 else Vector2(200, 360); v = Vector2.ZERO
 
 func tick(d: float) -> void:
-	var th := Vector2(ax(), ay())
+	var th := stick()
 	v += (grav(p) + th * 420.0) * d; p += v * d
 	if th != Vector2.ZERO and randf() < d * 50.0: m.fx.burst(p + Vector2(0, -20), 1, GOLD, 200.0, 0.0)
 	for b in pl:

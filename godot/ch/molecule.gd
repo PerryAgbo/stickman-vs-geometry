@@ -4,7 +4,7 @@ const EL := {"H": [Color.WHITE, 15.0, 1.0], "O": [Color("ff5a4a"), 20.0, 16.0], 
 const ALL := ["H", "O", "C", "N", "Na", "Cl"]
 const GY := 600.0
 const X0 := 60.0
-const X1 := 1220.0
+var X1 := 1220.0
 var MOL := [{"n": "H₂O", "name": "water", "geo": [["O", 0, -8], ["H", -36, 22], ["H", 36, 22]], "b": [[0, 1], [0, 2]]},
 	{"n": "CO₂", "name": "carbon dioxide", "geo": [["C", 0, 0], ["O", -58, 0], ["O", 58, 0]], "b": [[0, 1], [0, 2]]},
 	{"n": "NH₃", "name": "ammonia", "geo": [["N", 0, -12], ["H", -40, 20], ["H", 0, 34], ["H", 40, 20]], "b": [[0, 1], [0, 2], [0, 3]]},
@@ -23,7 +23,7 @@ var ph := 0.0
 var done_t := 0.0
 
 func begin() -> void:
-	title = "XV · THE MOLECULE"; max_hp = 5; hp = 5; begin_mol()
+	title = "XV · THE MOLECULE"; btn = [["jump", "JUMP"]]; max_hp = 5; hp = 5; begin_mol()
 
 func need() -> Dictionary:
 	var n := {}
@@ -48,6 +48,7 @@ func begin_mol() -> void:
 
 func tick(d: float) -> void:
 	var mol: Dictionary = MOL[mi]
+	X1 = minf(1220.0, safe_x() - 10.0)   # the arena ends where the jump button begins
 	var a := ax()
 	vx = move_toward(vx, a * 390.0, 3400.0 * d); px = clampf(px + vx * d, X0 + 10.0, X1 - 10.0)
 	if a != 0.0: face = 1 if a > 0.0 else -1

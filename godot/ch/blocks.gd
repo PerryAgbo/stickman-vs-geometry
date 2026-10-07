@@ -13,7 +13,7 @@ var goal := Vector2(4380, GY - 95)
 var got := 0.0
 
 func begin() -> void:
-	title = "VI · THE GOLDEN BLOCKS"; max_hp = 1; hp = 1
+	title = "VI · THE GOLDEN BLOCKS"; btn = [["attack", "SIZE"], ["jump", "JUMP"]]; max_hp = 1; hp = 1
 	for w in [[800.0, 190.0, false], [1600.0, 250.0, false], [2300.0, 1160.0, true], [2750.0, 250.0, false], [3900.0, 330.0, false]]:
 		walls.append({"x": w[0], "y": (GY - 100.0 - w[1]) if w[2] else GY - w[1], "w": 60.0, "h": w[1], "bar": w[2]})
 	for x in [420.0, 1150.0, 1950.0, 3100.0, 3400.0]: bl.append({"cx": x + S0 / 2.0, "x": x, "y": GY - S0, "w": S0, "h": S0, "size": S0, "lv": 0, "flash": 0.0})
@@ -58,7 +58,7 @@ func tick(d: float) -> void:
 			if p["y"] <= b["y"] + 6.0: continue
 			var L: bool = absf(p["x"] + 10.0 - b["x"]) < 6.0; var R: bool = absf(p["x"] - 10.0 - (b["x"] + b["w"])) < 6.0
 			if not L and not R: continue
-			var push := (L and dir > 0) or (R and dir < 0); var drag := ay() > 0.0 and ((L and dir < 0) or (R and dir > 0))
+			var push := (L and dir > 0) or (R and dir < 0); var drag := ay() > 0.5 and ((L and dir < 0) or (R and dir > 0))
 			if push or drag:
 				pushing = true; var nx: float = b["cx"] + dir * 150.0 * d
 				if fits(b, nx, b["size"]): b["cx"] = nx

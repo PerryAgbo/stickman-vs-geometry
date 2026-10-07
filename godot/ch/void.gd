@@ -12,7 +12,7 @@ var gy := 920.0
 var landed := false
 
 func begin() -> void:
-	title = "IV · THE VOID"; max_hp = 3; hp = 3
+	title = "IV · THE VOID"; btn = [["attack", "CUT"]]; max_hp = 3; hp = 3
 	for i in 40: lines.append([randf() * W, randf() * H, 20.0 + randf() * 60.0])
 
 func corners(o: Dictionary) -> Array:
@@ -31,8 +31,9 @@ func tick(d: float) -> void:
 			var o: Dictionary = tris[i]
 			if (o["p"] as Vector2).distance_to(p + Vector2(0, -30)) < o["r"] + 125.0: kill_fx(o["p"]); tris.remove_at(i)
 	if not landed:
-		vel = vel.lerp(Vector2(ax() * 480.0, ay() * 330.0), d * 9.0)
-		p.x = clampf(p.x + vel.x * d, 40.0, W - 40.0); p.y = clampf(p.y + vel.y * d, 90.0, H - 150.0); tilt = lerpf(tilt, vel.x / 480.0 * 0.5, d * 8.0)
+		var sv := stick()
+		vel = vel.lerp(Vector2(sv.x * 480.0, sv.y * 330.0), d * 9.0)
+		p.x = clampf(p.x + vel.x * d, 40.0, minf(W - 40.0, safe_x() - 40.0)); p.y = clampf(p.y + vel.y * d, 90.0, H - 150.0); tilt = lerpf(tilt, vel.x / 480.0 * 0.5, d * 8.0)
 	spawn -= d
 	if spawn <= 0.0 and t < T_END:
 		spawn = lerpf(0.8, 0.36, k) * (0.7 + randf() * 0.6)

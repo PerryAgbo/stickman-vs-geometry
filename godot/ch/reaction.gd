@@ -13,7 +13,7 @@ var sel := 0
 var solved := 0.0
 
 func begin() -> void:
-	title = "XVI · THE REACTION"; max_hp = 1; hp = 1; begin_eq()
+	title = "XVI · THE REACTION"; btn = []; max_hp = 1; hp = 1; begin_eq()
 
 func terms() -> Array:
 	var tt: Array = []; tt.append_array(EQ[ei]["L"]); tt.append_array(EQ[ei]["R"]); return tt

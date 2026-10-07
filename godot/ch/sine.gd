@@ -20,7 +20,7 @@ func F(i: int, x: float, tt: float) -> float:
 	return 62.0 * sin(kk * x - OM * tt) + 46.0 * sin(1.6 * kk * x + 1.3 * OM * tt)
 
 func begin() -> void:
-	title = "X · THE SINE WAVE"; max_hp = 3; hp = 3
+	title = "X · THE SINE WAVE"; btn = [["attack", "ATK"], ["jump", "JUMP"], ["dash", "DASH"]]; can_dash = true; max_hp = 3; hp = 3
 	var x := -200.0
 	var rest := func(wd: float) -> void:
 		segs.append({"x1": x, "y1": Y0, "x2": x + wd, "y2": Y0, "rest": true}); cps.append(Vector2(x + wd / 2.0, Y0)); x += wd
@@ -48,7 +48,7 @@ func tick(d: float) -> void:
 		var ep: Vector2 = Vector2(e["p"].x, e["s"]["y1"] - 150.0 + sin(e["t"] * 2.2) * 12.0) if not e["riv"] else e["p"]
 		var r := 46.0 if e["riv"] else 22.0
 		if atk_hits(hp_, p["face"], ep + (Vector2(0, -r) if e["riv"] else Vector2.ZERO), r): e["dead"] = true; kill_fx(ep)
-		elif p["stun"] <= 0.0 and (ep + (Vector2(0, -r) if e["riv"] else Vector2.ZERO)).distance_to(hp_ + Vector2(0, -44)) < r + 18.0:
+		elif p["stun"] <= 0.0 and dash_t <= 0.0 and (ep + (Vector2(0, -r) if e["riv"] else Vector2.ZERO)).distance_to(hp_ + Vector2(0, -44)) < r + 18.0:
 			e["dead"] = true; p["stun"] = 0.3; p["vx"] = -p["face"] * 200.0; m.combo = 0; m.snd("hurt", -4.0); m.fx.burst(ep, 14, Color.WHITE)
 	if p["g"] != null and p["g"].has("rest"):
 		for q in cps:

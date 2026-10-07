@@ -14,7 +14,7 @@ var trail := PackedVector2Array()
 var phis: Array = []
 
 func begin() -> void:
-	title = "VII · THE PARABOLA"; max_hp = 3; hp = 3
+	title = "VII · THE PARABOLA"; btn = [["jump", "LAUNCH"]]; max_hp = 3; hp = 3
 	for i in isl.size() - 1:
 		var a = isl[i]; var b = isl[i + 1]
 		phis.append({"p": Vector2((a[0] + a[2] / 2.0 + b[0] + b[2] / 2.0) / 2.0, minf(a[1], b[1]) - (b[0] - a[0]) * 0.3), "got": false})

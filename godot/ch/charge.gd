@@ -13,7 +13,7 @@ var cp := 0.0
 var flip_t := 0.0
 
 func begin() -> void:
-	title = "VIII · THE CHARGE"; max_hp = 3; hp = 3
+	title = "VIII · THE CHARGE"; btn = [["jump", "FLIP"]]; max_hp = 3; hp = 3
 	var rng := RandomNumberGenerator.new(); rng.seed = 41
 	var x := 1000.0
 	while x < 14500.0:

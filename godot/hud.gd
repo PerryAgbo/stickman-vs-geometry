@@ -10,6 +10,13 @@ var joy_id := -1
 var joy_o := Vector2.ZERO
 var joy_v := Vector2.ZERO
 var held := {}       # touch index -> action
+const STICK_R := 72.0     # how far the knob travels, in canvas px (about 7 mm on a phone)
+const SLOTS := [[112.0, 118.0, 84.0], [286.0, 96.0, 74.0], [122.0, 300.0, 60.0]]   # button offsets from the bottom-right corner, radius
+var stick := Vector2.ZERO # analog stick with the dead zone removed, length 0..1; chapters that steer in any direction read this
+var _dirs := {"move_left": false, "move_right": false, "move_up": false, "move_down": false}
+var _sa: Array = [0.0, 0.0, 0.0, 0.0]
+var _sb_on: StyleBoxFlat
+var _sb_off: StyleBoxFlat
 var preview: Node2D  # the hero standing on the chapter screen
 var _last_state := ""
 var _t := 0.0
@@ -21,12 +28,23 @@ func _ready() -> void:
 	preview.tex = load("res://art/hero_parts.png")
 	preview.scale = Vector2(1.5, 1.5)
 	add_child(preview)
+	_sb_on = StyleBoxFlat.new()
+	_sb_on.set_border_width_all(2)
+	_sb_on.set_corner_radius_all(14)
+	_sb_off = StyleBoxFlat.new()
+	_sb_off.bg_color = Color(0.03, 0.04, 0.06, 0.74)
+	_sb_off.border_color = Color(1, 1, 1, 0.22)
+	_sb_off.set_border_width_all(1)
+	_sb_off.set_corner_radius_all(14)
 
 func _j() -> Node:
 	return m.get("juice")
 
-## Safe-area insets in canvas pixels: [left, top, right, bottom].
+## Safe-area insets in canvas pixels: [left, top, right, bottom]. Measured once per frame.
 func _safe() -> Array:
+	return _sa
+
+func _calc_safe() -> Array:
 	var win := Vector2(DisplayServer.window_get_size())
 	if win.x <= 0.0 or win.y <= 0.0:
 		return [0.0, 0.0, 0.0, 0.0]
@@ -35,19 +53,56 @@ func _safe() -> Array:
 	return [clampf(sa.position.x * k, 0.0, 120.0), clampf(sa.position.y * k, 0.0, 120.0),
 		clampf((win.x - sa.end.x) * k, 0.0, 120.0), clampf((win.y - sa.end.y) * k, 0.0, 120.0)]
 
+## The action buttons this chapter actually uses, in slot order: [action, label].
+func _acts() -> Array:
+	if m.ch:
+		return m.ch.btn
+	return [["attack", "ATK"], ["jump", "JUMP"], ["dash", "DASH"]]
+
 func _buttons() -> Array:    # [action, centre, radius, label, colour]
 	var s := size
 	var sa := _safe()
-	var r: float = sa[2]
-	var b: float = sa[3]
-	return [["attack", Vector2(s.x - r - 150, s.y - b - 150), 88.0, "ATK", GOLD],
-		["jump", Vector2(s.x - r - 340, s.y - b - 110), 68.0, "JUMP", m.HEROES[m.hero_i]],
-		["dash", Vector2(s.x - r - 120, s.y - b - 340), 58.0, "DASH", Color.WHITE],
-		["pause", Vector2(s.x - r - 56, sa[1] + 118), 32.0, "II", Color.WHITE]]
+	var out: Array = []
+	var acts := _acts()
+	for i in mini(acts.size(), SLOTS.size()):
+		var sl: Array = SLOTS[i]
+		var a: String = acts[i][0]
+		var col: Color = GOLD if a == "attack" else (m.HEROES[m.hero_i] if a == "jump" else Color.WHITE)
+		out.append([a, Vector2(s.x - sa[2] - sl[0], s.y - sa[3] - sl[1]), sl[2], acts[i][1], col])
+	out.append(["pause", Vector2(s.x - sa[2] - 60.0, sa[1] + 124.0), 38.0, "II", Color.WHITE])
+	return out
+
+## HUD x of the left edge of the action buttons, with a margin; the full width when there are none.
+func ctrl_left() -> float:
+	var x := size.x
+	if not m.touch:
+		return x
+	for b in _buttons():
+		if b[0] != "pause":
+			x = minf(x, b[1].x - b[2] - 24.0)
+	return x
 
 func _stick_home() -> Vector2:
 	var sa := _safe()
 	return Vector2(sa[0] + 170.0, size.y - sa[3] - 170.0)
+
+## Turn the knob offset into input: an analog strength per direction, pressed with hysteresis so a
+## resting thumb does not flicker, and only the dominant axis within ~27 degrees of it.
+func _set_stick(off: Vector2) -> void:
+	joy_v = off / STICK_R
+	var l := joy_v.length()
+	stick = Vector2.ZERO if l < 0.2 else joy_v / l * clampf(inverse_lerp(0.2, 0.92, l), 0.0, 1.0)
+	var comps := {"move_left": -joy_v.x, "move_right": joy_v.x, "move_up": -joy_v.y, "move_down": joy_v.y}
+	for a in comps:
+		var c: float = comps[a]
+		var other: float = absf(joy_v.y) if (a == "move_left" or a == "move_right") else absf(joy_v.x)
+		var was: bool = _dirs[a]
+		var on: bool = c > 0.2 if was else (c > 0.36 and c > other * 0.5)
+		_dirs[a] = on
+		if on:
+			Input.action_press(a, clampf(inverse_lerp(0.2, 0.9, c), 0.35, 1.0))
+		elif was:
+			Input.action_release(a)
 
 # ---- chapter screen layout: 4 columns, room for the hero preview on the right ----
 func _grid() -> Dictionary:
@@ -91,28 +146,56 @@ func _input(ev: InputEvent) -> void:
 				return
 			if not m.touch or m.state != "play":
 				return
-			for b in _buttons():
-				if p.distance_to(b[1]) < b[2] + 14.0:
-					held[ev.index] = b[0]
-					Input.action_press(b[0])
-					if _j(): _j().haptic(8)
-					return
-			if p.x < size.x * 0.46 and joy_id < 0:
-				joy_id = ev.index; joy_o = p; joy_v = Vector2.ZERO
+			# the nearest button wins, with generous finger slop, so there is no dead seam between two buttons
+			var bs := _buttons()
+			var best := -1
+			var bd := 34.0
+			for i in bs.size():
+				var d: float = p.distance_to(bs[i][1]) - bs[i][2]
+				if d < bd:
+					bd = d
+					best = i
+			if best >= 0:
+				held[ev.index] = bs[best][0]
+				Input.action_press(bs[best][0])
+				if _j(): _j().haptic(8)
+				return
+			if p.x < size.x * 0.55 and joy_id < 0:
+				joy_id = ev.index
+				joy_o = p
+				_set_stick(Vector2.ZERO)
 		else:
 			if held.has(ev.index):
-				Input.action_release(held[ev.index]); held.erase(ev.index)
+				var a: String = held[ev.index]
+				held.erase(ev.index)
+				if not held.values().has(a):   # another finger may still be on the same button
+					Input.action_release(a)
 			if ev.index == joy_id:
 				_drop_stick()
-	elif ev is InputEventScreenDrag and ev.index == joy_id:
-		var r := 100.0
-		joy_v = (ev.position - joy_o).limit_length(r) / r
-		_dir("move_left", joy_v.x < -0.32); _dir("move_right", joy_v.x > 0.32)
-		_dir("move_up", joy_v.y < -0.55); _dir("move_down", joy_v.y > 0.55)
+	elif ev is InputEventScreenDrag:
+		if not m.touch or m.state != "play":
+			return
+		if ev.index != joy_id:
+			# a thumb that was already resting on the glass when play began becomes the stick
+			if joy_id < 0 and not held.has(ev.index) and ev.position.x < size.x * 0.55:
+				joy_id = ev.index
+				joy_o = ev.position
+			else:
+				return
+		var off: Vector2 = ev.position - joy_o
+		if off.length() > STICK_R:   # the centre follows the thumb, so reversing never needs a long drag back
+			joy_o = ev.position - off.limit_length(STICK_R)
+			off = ev.position - joy_o
+		_set_stick(off)
 
 func _drop_stick() -> void:
-	joy_id = -1; joy_v = Vector2.ZERO
-	for a in ["move_left", "move_right", "move_up", "move_down"]: Input.action_release(a)
+	joy_id = -1
+	joy_v = Vector2.ZERO
+	stick = Vector2.ZERO
+	for a in _dirs:
+		if _dirs[a]:
+			Input.action_release(a)
+		_dirs[a] = false
 
 func _release_all() -> void:
 	for a in held.values(): Input.action_release(a)
@@ -163,15 +246,12 @@ func _result_tap(p: Vector2) -> void:
 		var nx: String = j.next_id()
 		m._menu()
 		m.start(nx)
-	else:
+	elif r["menu"].has_point(p):   # only a real button leaves the screen; stray taps after a defeat do nothing
 		m._menu()
-
-func _dir(a: String, on: bool) -> void:
-	if on and not Input.is_action_pressed(a): Input.action_press(a)
-	elif not on and Input.is_action_pressed(a): Input.action_release(a)
 
 func _process(delta: float) -> void:
 	_t += delta
+	_sa = _calc_safe()
 	if m.state != _last_state:
 		_last_state = m.state
 		_release_all()
@@ -183,12 +263,10 @@ func _process(delta: float) -> void:
 
 # ---- drawing helpers ----
 func _panel(r: Rect2, on := false, col := GOLD) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(col.r, col.g, col.b, 0.16) if on else Color(0.03, 0.04, 0.06, 0.74)
-	sb.border_color = col if on else Color(1, 1, 1, 0.22)
-	sb.set_border_width_all(2 if on else 1)
-	sb.set_corner_radius_all(14)
-	draw_style_box(sb, r)
+	if on:
+		_sb_on.bg_color = Color(col.r, col.g, col.b, 0.16)
+		_sb_on.border_color = col
+	draw_style_box(_sb_on if on else _sb_off, r)
 
 func _text(s: String, pos: Vector2, sz: int, col := Color.WHITE, align := HORIZONTAL_ALIGNMENT_LEFT, w := -1.0) -> void:
 	draw_string(font, pos, s, align, w, sz, col)
@@ -247,17 +325,17 @@ func _draw_controls() -> void:
 			_text(b[3], b[1] + Vector2(-b[2], 32 if b[2] > 60 else 28), 15 if b[2] > 60 else 13, Color(1, 1, 1, 0.8), HORIZONTAL_ALIGNMENT_CENTER, b[2] * 2)
 	var tint: Color = m.HEROES[m.hero_i]
 	if joy_id >= 0:
-		draw_arc(joy_o, 100.0, 0, TAU, 56, Color(1, 1, 1, 0.35), 2.0, true)
-		draw_circle(joy_o, 100.0, Color(1, 1, 1, 0.04))
-		draw_circle(joy_o + joy_v * 100.0, 42.0, Color(tint.r, tint.g, tint.b, 0.45))
-		draw_arc(joy_o + joy_v * 100.0, 42.0, 0, TAU, 40, Color(1, 1, 1, 0.6), 2.0, true)
+		draw_arc(joy_o, STICK_R, 0, TAU, 56, Color(1, 1, 1, 0.35), 2.0, true)
+		draw_circle(joy_o, STICK_R, Color(1, 1, 1, 0.04))
+		draw_circle(joy_o + joy_v * STICK_R, 38.0, Color(tint.r, tint.g, tint.b, 0.45))
+		draw_arc(joy_o + joy_v * STICK_R, 38.0, 0, TAU, 40, Color(1, 1, 1, 0.6), 2.0, true)
 	else:
 		var h := _stick_home()
 		var a := 0.22 + 0.08 * sin(_t * 2.0)
-		draw_arc(h, 100.0, 0, TAU, 56, Color(1, 1, 1, a), 2.0, true)
-		draw_circle(h, 42.0, Color(1, 1, 1, 0.06))
-		_glyph("dash", h + Vector2(-54, 0), Color(1, 1, 1, a))
-		draw_set_transform(h + Vector2(54, 0), PI, Vector2.ONE)
+		draw_arc(h, STICK_R, 0, TAU, 56, Color(1, 1, 1, a), 2.0, true)
+		draw_circle(h, 38.0, Color(1, 1, 1, 0.06))
+		_glyph("dash", h + Vector2(54, 0), Color(1, 1, 1, a))
+		draw_set_transform(h + Vector2(-54, 0), PI, Vector2.ONE)
 		_glyph("dash", Vector2.ZERO, Color(1, 1, 1, a))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_text("MOVE", h + Vector2(-50, 6), 14, Color(1, 1, 1, a + 0.15), HORIZONTAL_ALIGNMENT_CENTER, 100)

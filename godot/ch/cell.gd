@@ -14,13 +14,14 @@ var spawn := 1.0
 var cd := 0.0
 
 func begin() -> void:
-	title = "XVII · THE CELL"; max_hp = 4; hp = 4
+	title = "XVII · THE CELL"; btn = []; max_hp = 4; hp = 4
 	for i in 14: rbc.append([Vector2(randf() * W, TOP + 30.0 + randf() * (BOT - TOP - 60.0)), 0.6 + randf() * 0.6, randf() * TAU])
 
 func tick(d: float) -> void:
 	pulse = maxf(0.0, pulse - d * 3.0); cd -= d
-	p.x = clampf(p.x + ax() * 320.0 * d, 60.0, W - 200.0); p.y = clampf(p.y + ay() * 320.0 * d, TOP + 44.0, BOT - 44.0)
-	if (Input.is_action_pressed("attack") or Input.is_action_pressed("jump")) and cd <= 0.0:
+	var sv := stick()
+	p.x = clampf(p.x + sv.x * 320.0 * d, 60.0, W - 200.0); p.y = clampf(p.y + sv.y * 320.0 * d, TOP + 44.0, BOT - 44.0)
+	if (m.touch or Input.is_action_pressed("attack") or Input.is_action_pressed("jump")) and cd <= 0.0:   # antibodies fire by themselves on a phone
 		cd = 0.28; shots.append(p + Vector2(40, 0)); m.snd("throw", -8.0)
 	var k := clampf(float(eaten) / GOAL, 0.0, 1.0)
 	spawn -= d

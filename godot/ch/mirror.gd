@@ -15,7 +15,7 @@ var hold := 0.0
 var res := {}
 
 func begin() -> void:
-	title = "XII · THE MIRROR"; max_hp = 1; hp = 1; res = trace(PZ[0])
+	title = "XII · THE MIRROR"; btn = []; max_hp = 1; hp = 1; res = trace(PZ[0])
 
 func rots() -> Array:
 	var P: Dictionary = PZ[pi_]; var r: Array = []
@@ -77,6 +77,7 @@ func tick(d: float) -> void:
 	if Input.is_action_just_pressed("move_right"): sel = (sel + 1) % R.size(); m.snd("tick")
 	if Input.is_action_just_pressed("move_left"): sel = (sel + R.size() - 1) % R.size(); m.snd("tick")
 	var dd := ay()
+	if absf(dd) < 0.3: dd = 0.0
 	if dd != 0.0:
 		hold += d; R[sel][2] += dd * (10.0 if hold < 0.3 else 55.0) * d
 	else: hold = 0.0
