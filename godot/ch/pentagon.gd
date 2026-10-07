@@ -45,7 +45,7 @@ func tick(d: float) -> void:
 		var to: Vector2 = B["p"] - proj["p"]; proj["p"] += to.normalized() * 980.0 * d; proj["l"] += d
 		if to.length() < B["r"] + 6.0: dmg(1); proj = {}
 		elif proj["l"] > 1.2: proj = {}
-	if atk_hits(hp_, p["face"], B["p"], B["r"]) and B.get("hid", -1) != atk_id and B["st"] != "intro": B["hid"] = atk_id; dmg(2 if combo_n == 3 else 1)
+	if atk_hits(hp_, p["face"], B["p"], B["r"]) and B.get("hid", -1) != atk_id and B["st"] != "intro": B["hid"] = atk_id; dmg(atk_power())
 	if dying > 0.0: return
 	var ph := phase(); B["t"] += d; B["flash"] -= d
 	var hurt_dir := func(dir: float) -> void:
@@ -90,7 +90,7 @@ func tick(d: float) -> void:
 				if absf(p["x"] - B["p"].x) < 140.0 and p["y"] > GY - 30.0: hurt_dir.call(signf(p["x"] - B["p"].x) if p["x"] != B["p"].x else 1.0)
 		"slamD":
 			if B["t"] > [0.0, 1.5, 1.2, 0.9][ph]: B["st"] = "hover"; B["t"] = 0.0
-	if (B["p"] as Vector2).distance_to(hp_ + Vector2(0, -32)) < B["r"] and atk_t <= 0.0: hurt_dir.call(signf(p["x"] - B["p"].x) if p["x"] != B["p"].x else 1.0)
+	if (B["p"] as Vector2).distance_to(hp_ + Vector2(0, -32)) < B["r"] and atk_t <= 0.0 and not evading(): hurt_dir.call(signf(p["x"] - B["p"].x) if p["x"] != B["p"].x else 1.0)
 	for i in range(waves.size() - 1, -1, -1):
 		waves[i][0] += waves[i][1] * d
 		if waves[i][0] < -50.0 or waves[i][0] > 1650.0: waves.remove_at(i); continue

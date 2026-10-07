@@ -92,7 +92,7 @@ func _physics_process(delta: float) -> void:
 			vel.x = lerpf(vel.x, 0.0, delta * 12.0)
 			if q > 0.36:
 				st = "lunge"; q = 0.0; vel.x = dir * 240.0
-				if absf(to.x) < 125.0 and absf(to.y) < 95.0 and hero.dash_t <= 0.0:
+				if absf(to.x) < 125.0 and absf(to.y) < 95.0 and not hero.evading():
 					if hero.atk_t > 0.0:    # blades clash: both are thrown back
 						hero.velocity.x = -dir * 260.0
 						vel.x = -dir * 420.0
@@ -140,13 +140,15 @@ func _physics_process(delta: float) -> void:
 		skin.pose = "slash" if st == "lunge" else ("throw" if st == "wind" else ("run" if absf(vel.x) > 60.0 else "idle"))
 		skin.swing = clampf(q / 0.25, 0.0, 1.0) if st == "lunge" else 0.0
 		skin.ph = t * 9.0
-	# the hero's blade or dash
+	# the hero's blade, dash, roll or slide
 	var d: int = hero.sword_hits(global_position, r, self)
 	if d == 0:
 		d = hero.dash_hits(global_position, r, self)
+	if d == 0:
+		d = hero.slide_hits(global_position, r, self)
 	if d > 0:
-		take(d, hero.face)
-	elif hero.dash_t <= 0.0 and hero.stun <= 0.0 and global_position.distance_to(hero.global_position + Vector2(0, -44)) < r + 16.0:
+		take(d, hero.knock(global_position))
+	elif not hero.evading() and hero.stun <= 0.0 and global_position.distance_to(hero.global_position + Vector2(0, -44)) < r + 16.0:
 		if patrol:
 			hero.stun = 0.26
 			hero.velocity.x *= 0.5

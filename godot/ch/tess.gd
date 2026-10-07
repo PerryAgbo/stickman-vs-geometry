@@ -38,7 +38,7 @@ func tick(d: float) -> void:
 	var tg := target()
 	if rope.is_empty() and Input.is_action_just_pressed("attack") and tg >= 0:
 		var dd: float = nodes[tg].distance_to(Vector2(p["x"], p["y"] - 70.0))
-		rope = {"n": tg, "L": clampf(dd, 140.0, RANGE), "min": maxf(140.0, dd * 0.6)}; p["g"] = null; m.snd("throw")
+		rope = {"n": tg, "L": clampf(dd, 140.0, RANGE), "min": maxf(140.0, dd * 0.6)}; p["g"] = null; acro_reset(); m.snd("throw")
 	else: atk_tick(d)
 	if not rope.is_empty() and not Input.is_action_pressed("attack"):
 		last_n = rope["n"]; last_t = t; rope = {}
@@ -64,7 +64,7 @@ func tick(d: float) -> void:
 		if e["dead"]: continue
 		e["t"] += d; var ep: Vector2 = e["p"] + Vector2(0, sin(e["t"] * 2.2) * 16.0)
 		if atk_hits(hp_, p["face"], ep, 22.0): e["dead"] = true; kill_fx(ep); p["dj"] = false; p["vy"] = minf(p["vy"], -560.0); p["g"] = null
-		elif p["stun"] <= 0.0 and dash_t <= 0.0 and ep.distance_to(hp_ + Vector2(0, -44)) < 40.0: e["dead"] = true; p["stun"] = 0.2; p["vx"] *= 0.4; m.combo = 0; m.snd("hurt", -4.0); m.fx.burst(ep, 14, Color.WHITE)
+		elif p["stun"] <= 0.0 and not evading() and ep.distance_to(hp_ + Vector2(0, -44)) < 40.0: e["dead"] = true; p["stun"] = 0.2; p["vx"] *= 0.4; m.combo = 0; m.snd("hurt", -4.0); m.fx.burst(ep, 14, Color.WHITE)
 	if p["g"] != null:
 		for q in cps:
 			if q.x >= p["g"]["x1"] and q.x <= p["g"]["x2"]: cp = q

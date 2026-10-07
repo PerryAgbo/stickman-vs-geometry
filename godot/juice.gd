@@ -119,7 +119,11 @@ func hitstop(sec: float) -> void:
 	_stop_t = maxf(_stop_t, sec)
 
 func _hero_pos() -> Vector2:
-	return m.hero.global_position if m.hero else Vector2(640, 360)
+	if m.hero:
+		return m.hero.global_position
+	if m.ch and m.ch.skin:   # scripted chapters: where the skeleton is drawn, in the effect layer's own coordinates
+		return m.fx.to_local(m.ch.skin.global_position)
+	return Vector2(640, 360)
 
 func _on_hero_hurt() -> void:
 	flash = 0.35
@@ -321,7 +325,7 @@ func _run_sim() -> void:
 		match a[0]:
 			"pause": m.state = "pause"; Engine.time_scale = 0.0
 			"back": _back()
-			"hurt": if m.hero: m.hero.inv = 0.0; m.hero.hurt(1.0)
+			"hurt": if m.hero: m.hero.inv = 0.0; m.hero.safe = 0.0; m.hero.hurt(1.0)
 			"kill":
 				for f in m.foes.duplicate():
 					if is_instance_valid(f): f.take(99, 1.0)

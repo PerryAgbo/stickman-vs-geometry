@@ -18,6 +18,9 @@ var armed := true
 var flying := false
 var flash := 0.0
 var shadow := true
+var spin := 0.0                # rolls and flips: the whole figure turned about its middle (radians, forwards is positive)
+var _pv := Vector2(2, -46)
+var _base := Transform2D.IDENTITY
 var _j := {}
 var _t := 0.0
 var _poses := {}
@@ -36,6 +39,13 @@ func _ready() -> void:
 		"surf": J(Vector2(-2, -42), Vector2(5, -70), Vector2(9, -84), Vector2(-16, 0), Vector2(16, 0), Vector2(-26, -62), Vector2(28, -68)),
 		"throw": J(Vector2(1, -46), Vector2(5, -75), Vector2(8, -89), Vector2(-15, 0), Vector2(14, 0), Vector2(32, -78), Vector2(-12, -54)),
 		"hurt": J(Vector2(-3, -45), Vector2(-10, -72), Vector2(-16, -84), Vector2(-6, 0), Vector2(14, -4), Vector2(-24, -66), Vector2(6, -76)),
+		# acrobatics. roll and flip are the same tuck, on the ground and in the air; both are turned by `spin`
+		"roll": J(Vector2(-9, -19), Vector2(8, -39), Vector2(19, -31), Vector2(11, -7), Vector2(6, -3), Vector2(15, -15), Vector2(10, -11)),
+		"flip": J(Vector2(-9, -43), Vector2(8, -63), Vector2(19, -55), Vector2(11, -31), Vector2(6, -27), Vector2(15, -39), Vector2(10, -35)),
+		"back": J(Vector2(-4, -44), Vector2(-10, -70), Vector2(-17, -81), Vector2(14, -22), Vector2(8, -16), Vector2(-30, -84), Vector2(-26, -78)),
+		"slide": J(Vector2(-10, -15), Vector2(-24, -39), Vector2(-28, -53), Vector2(30, -3), Vector2(8, 0), Vector2(-36, -8), Vector2(2, -34)),
+		"skid": J(Vector2(-8, -38), Vector2(-16, -64), Vector2(-18, -78), Vector2(20, 0), Vector2(-2, 0), Vector2(8, -52), Vector2(-36, -50)),
+		"plunge": J(Vector2(-2, -52), Vector2(2, -80), Vector2(5, -94), Vector2(-12, -34), Vector2(10, -30), Vector2(8, -54), Vector2(5, -56), PI / 2.0),
 	}
 	# three-hit combo: wind-up, strike with a stepping lunge, held follow-through
 	_atk = {
@@ -48,6 +58,9 @@ func _ready() -> void:
 		3: [[0.3, J(Vector2(-3, -48), Vector2(-1, -77), Vector2(1, -91), Vector2(-12, 0), Vector2(12, -7), Vector2(-4, -104), Vector2(-8, -98), -1.95)],
 			[0.52, J(Vector2(8, -36), Vector2(20, -58), Vector2(27, -70), Vector2(-22, 0), Vector2(28, 0), Vector2(42, -42), Vector2(36, -40), 0.45)],
 			[0.82, J(Vector2(8, -35), Vector2(20, -57), Vector2(27, -69), Vector2(-22, 0), Vector2(28, 0), Vector2(40, -34), Vector2(35, -34), 0.7)]],
+		# air spin: body drawn in, blade held out, the turn itself comes from `spin`
+		4: [[0.12, J(Vector2(-2, -48), Vector2(4, -74), Vector2(9, -87), Vector2(10, -24), Vector2(-12, -22), Vector2(34, -68), Vector2(-14, -60), 0.0)],
+			[0.9, J(Vector2(-2, -48), Vector2(4, -74), Vector2(9, -87), Vector2(12, -26), Vector2(-14, -20), Vector2(36, -70), Vector2(-16, -62), 0.0)]],
 	}
 
 func _stance(t: float) -> Dictionary:
@@ -94,7 +107,8 @@ func _process(delta: float) -> void:
 	if _j.is_empty():
 		_j = tg
 	else:   # ease from the last pose into this one, so actions blend instead of snapping
-		_j = _lerpj(_j, tg, 1.0 - exp(-delta * (30.0 if pose in ["slash", "run", "dash"] else 15.0)))
+		_j = _lerpj(_j, tg, 1.0 - exp(-delta * (30.0 if pose in ["slash", "run", "dash", "roll", "flip", "slide"] else 15.0)))
+	_pv = _pv.lerp(Vector2(3, -21) if pose == "roll" else (Vector2(3, -45) if pose == "flip" else Vector2(2, -48)), 1.0 - exp(-delta * 24.0))
 	queue_redraw()
 
 func _ik(a: Vector2, b: Vector2, l: float, dir: float) -> Vector2:
@@ -105,12 +119,15 @@ func _ik(a: Vector2, b: Vector2, l: float, dir: float) -> Vector2:
 	var h := sqrt(l * l - dist * dist / 4.0)
 	return a + d / 2.0 + Vector2(-d.y, d.x) / dist * h * dir
 
+func _xf(pos := Vector2.ZERO, rot := 0.0, sc := Vector2.ONE) -> void:
+	draw_set_transform_matrix(_base * Transform2D(rot, sc, 0.0, pos))
+
 func _part(i: int, a: Vector2, b: Vector2, col: Color, sy := 1.0) -> void:
-	draw_set_transform(a, (b - a).angle() - PI / 2.0, Vector2(PS, PS * sy))
+	_xf(a, (b - a).angle() - PI / 2.0, Vector2(PS, PS * sy))
 	draw_texture_rect_region(tex, Rect2(-96, -40, 192, 192), Rect2(i * 192, 0, 192, 192), col)
 
 func _foot(f: Vector2, col: Color) -> void:
-	draw_set_transform(f + Vector2(0, -2.8), 0.0, Vector2(PS, PS))
+	_xf(f + Vector2(0, -2.8), 0.0, Vector2(PS, PS))
 	draw_texture_rect_region(tex, Rect2(-60, -96, 192, 192), Rect2(384, 0, 192, 192), col)
 
 func _draw() -> void:
@@ -131,12 +148,16 @@ func _draw() -> void:
 	var e0 := _ik(sh, h0, ARM, 1.0)
 	var e1 := _ik(sh, h1, ARM, 1.0)
 	var blade: float = _j["blade"]
-	var show_blade := armed and not is_nan(blade) and (pose == "slash" or pose == "idle")
+	var show_blade := armed and not is_nan(blade) and pose in ["slash", "idle", "plunge"]
+	_base = Transform2D.IDENTITY
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if shadow:   # grounds the figure
 		draw_set_transform(Vector2(0, 1), 0.0, Vector2(1, 0.28))
 		draw_circle(Vector2.ZERO, 22.0, Color(0, 0, 0, 0.45))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if spin != 0.0:
+		_base = Transform2D(spin, _pv - _pv.rotated(spin))
+	_xf()
 	if flying:   # wings of light
 		var fl := sin(_t * 22.0) * 10.0
 		for q in 2:
@@ -147,33 +168,38 @@ func _draw() -> void:
 	_part(3, sh, e1, far); _part(4, e1, h1, far)
 	_part(0, hip, k1, far); _part(1, k1, f1, far); _foot(f1, far)
 	_part(5, sh, hip, col, hip.distance_to(sh) / TORSO)
-	draw_set_transform(head, 0.0, Vector2(PS, PS))
+	_xf(head, 0.0, Vector2(PS, PS))
 	draw_texture_rect_region(tex, Rect2(-96, -96, 192, 192), Rect2(1152, 0, 192, 192), col)
 	_part(0, hip, k0, col); _part(1, k0, f0, col); _foot(f0, col)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_xf()
 	if show_blade:
 		var dir := Vector2.from_angle(blade)
 		draw_line(h0, h0 + dir * 52.0, Color(1, 1, 1, 0.35), 8.0, true)
 		draw_line(h0, h0 + dir * 52.0, Color("f4f8ff"), 3.6, true)
 		draw_line(h0 + dir.orthogonal() * 6.0, h0 - dir.orthogonal() * 6.0, GOLD, 4.5, true)
 	_part(3, sh, e0, col); _part(4, e0, h0, col)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_xf()
 	# headband, glowing eyes, flowing tails
 	draw_line(head + Vector2(-11, -3), head + Vector2(11.5, -5), band, 4.2, true)
 	for q in [[3.0, 0.5], [8.6, -0.5]]:   # narrowed eyes
 		var c := head + Vector2(q[0], q[1])
 		draw_line(c + Vector2(-2.6, -1.4), c + Vector2(2.6, 0.6), Color.WHITE, 2.2, true)
-	var flow := 1.0 if pose in ["run", "dash", "jump", "fall", "slash"] else 0.35
+	var flow := 1.0 if pose in ["run", "dash", "jump", "fall", "slash", "roll", "flip", "back", "slide", "plunge"] else 0.35
 	for q in 2:
 		var pts := PackedVector2Array([head + Vector2(-10.5, -4 + q * 3)])
 		for k in range(1, 6):
 			pts.append(head + Vector2(-10.5 - k * 5.2 * flow - (1.0 - flow) * k * 1.2, -4 + q * 3 + sin(_t * 10.0 + ph + k * 0.9 + q * 1.7) * (1.2 + k * 0.7) * flow + k * k * (1.6 - flow) * 0.45))
 		draw_polyline(pts, band, 2.2, true)
 	# blade trail while the sword is actually travelling
-	if pose == "slash" and swing > 0.22 and swing < 0.82:
+	if pose == "slash" and combo == 4:
+		if swing > 0.08 and swing < 0.92:   # the ring the spinning blade leaves behind it
+			for k in 3:
+				draw_arc(_pv, 84.0 - k * 9.0, -0.35 - minf(swing * 6.0, 2.6), -0.35, 22, Color(1, 0.84, 0.25, 0.7 - k * 0.2), 6.0 - k * 1.6, true)
+	elif pose == "slash" and swing > 0.22 and swing < 0.82:
 		var u := (swing - 0.22) / 0.6
 		var a0 := 1.6 if combo == 2 else -2.4
 		var a1 := lerpf(a0, -1.5 if combo == 2 else 0.9, u)
 		var r := 96.0 if combo == 3 else 76.0
 		for k in 3:
 			draw_arc(Vector2(8, -68), r - k * 9.0, minf(a0, a1), maxf(a0, a1), 20, Color(1, 0.84, 0.25, 0.75 - k * 0.22), 6.0 - k * 1.6, true)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

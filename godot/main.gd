@@ -208,6 +208,11 @@ func start(lv: String) -> void:
 	hero.hurt_taken.connect(func(): combo = 0; shake = 14.0; snd("hurt"); fx.burst(hero.global_position + Vector2(0, -30), 14, HEROES[hero_i]))
 	hero.throw_phi.connect(func(target): snd("throw"); fx.bolts.append({"p": hero.global_position + Vector2(hero.face * 22, -46), "t": target, "l": 0.0}))
 	hero.sound.connect(snd)
+	hero.slammed.connect(func():   # the plunge lands
+		snd("boom", -3.0); shake = maxf(shake, 22.0); hitstop(0.07); haptic(45)
+		fx.ring(hero.global_position + Vector2(0, -6), Color(1, 0.84, 0.25, 0.8), 20.0, 190.0, 0.28, 6.0)
+		fx.dust(hero.global_position, 0.0, 16)
+		fx.burst(hero.global_position, 26, GOLD, 520.0, 700.0))
 	if lv == "arena":
 		ground_y = 560.0
 		_solid(-400, 560, 2700, 400)
@@ -268,6 +273,7 @@ func _on_foe_died(f: Node2D) -> void:
 		if f.kind == "dia":   # flyers are stepping stones
 			hero.velocity.y = minf(hero.velocity.y, -560.0)
 			hero.dj = false
+			if hero.spin_left == 0.0 and not hero.is_on_floor(): hero.turn(TAU, 0.42)   # and springs off them with a flip
 	hitstop(0.05)
 
 func _on_foe_bumped(f: Node2D) -> void:
@@ -397,7 +403,9 @@ func _process(delta: float) -> void:
 		var gap := hero.position.x - chaser_x
 		var v := 292.0 + minf(hero.position.x / 12000.0, 1.0) * 66.0
 		if gap > 820.0: v = 440.0
-		if hero.position.x < 140.0 and time < 8.0: v = 0.0   # the wave waits for the first steps, so finding the stick is never fatal
+		if hero.position.x < 140.0 and time < 8.0:   # the wave waits for the first steps, so finding the stick is never fatal
+			v = 0.0
+			hero.position.x = maxf(hero.position.x, chaser_x + 520.0)
 		chaser_x += v * delta
 		chaser.position = Vector2(chaser_x, lerpf(chaser.position.y if chaser.position != Vector2.ZERO else 320.0, hero.position.y - 150.0, delta * 3.0))
 		chaser.rotation += delta * 2.0
@@ -413,6 +421,7 @@ func _process(delta: float) -> void:
 				if p.x <= hero.position.x: cp = p
 			hero.position = cp
 			hero.velocity = Vector2.ZERO
+			hero.reset_moves()
 			chaser_x = minf(chaser_x, cp.x - 720.0)
 		if hero.position.x > goal_x: _finish(true)
 		# follow sideways quickly but only drift up and down, so every jump does not shake the view
